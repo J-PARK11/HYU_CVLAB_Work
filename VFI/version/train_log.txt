@@ -1,0 +1,9 @@
+{230622 GT Itp Flow로 기대성능 평가를 위한 모델 학습 시뮬레이션}
+{Train Dataloader Stride 2 주고, UNet 구조 간소화 수행}
+python train.py --data_root /home/work/VFIT/data/vimeo_septuplet/ --mode train --log_iter 1000 --epochs 2 --batch_size 6 --test_batch_size 4 --checkpoint_epoch 1
+
+Date: 2023-06-23 16:09:35s, Time_Cost: 48325s, Epoch: [1/5], Val_PSNR:29.95, Val_SSIM:0.9999, Lr:0.004000000178251237
+Date: 2023-06-24 06:19:49s, Time_Cost: 51014s, Epoch: [2/5], Val_PSNR:23.05, Val_SSIM:0.9996, Lr:0.004000000713004895
+Date: 2023-06-24 21:17:03s, Time_Cost: 53835s, Epoch: [3/5], Val_PSNR:-7.68, Val_SSIM:0.9729, Lr:0.004000001604261019
+Date: 2023-06-25 13:00:52s, Time_Cost: 56629s, Epoch: [4/5], Val_PSNR:-63.63, Val_SSIM:0.9714, Lr:0.0040000028520195685
+Date: 2023-06-26 05:30:27s, Time_Cost: 59375s, Epoch: [5/5], Val_PSNR:-19.44, Val_SSIM:0.9716, Lr:0.0040000044562805565
