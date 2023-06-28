@@ -23,7 +23,7 @@ Notion: [Video Frame Interpolation Notion](https://www.notion.so/Video-Frame-Int
    python train.py --flow_model --depth_model --data_root --out_root --softsplat
    # Test
    python test.py --flow_model --depth_model --data_root --out_root --softsplat
-   # Test withour refinet
+   # Test without refinet
    python test_without_refine.py --flow_model --depth_model --data_root --out_root --softsplat      
 ```
 
