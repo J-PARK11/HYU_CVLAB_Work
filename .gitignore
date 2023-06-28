@@ -1,1 +1,9 @@
+VFI/__pycache__/
+VFI/checkpoint/
+VFI/data/
+VFI/output/
+VFI/output_raw/
+VFI/output_softsplat/
+VFI/tensorboard/
+VFI/core
 

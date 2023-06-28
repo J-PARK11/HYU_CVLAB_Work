@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 from dataloader.main_dataloader import get_loader
-import raft_warping, config
+import config, raft_warping, raft_warping_softsplat
 from API import utils, UNet, metric
 
 print('\n>>>>>> RAFT + MiDaS Guide Video Frame Interpolation <<<<<')
@@ -39,14 +39,18 @@ valid_loader = get_loader(args.data_root + 'valid/', args.test_batch_size, mode=
 
 # RAFT + MiDaS + UNet Model Load
 device = utils.torch_cuda()
-raft_midas = raft_warping.raft(args, device)
+if args.softsplat:
+    raft_midas = raft_warping_softsplat.raft(args, device)
+else:
+    raft_midas = raft_warping.raft(args, device)
+
 refine_net = UNet.UNet(3,3).to(device)
 print(f"Refine Net #params", sum([p.numel() for p in refine_net.parameters()]),'\n')
 
 # Optimizer & Loss & Metric & Scheduler
 criterion = metric.Loss(args)
 optimizer = metric.adamax(refine_net.parameters())
-scheduler = metric.MultiStepLR(optimizer, [1,2,3,4,5], 0.5)
+scheduler = metric.MultiStepLR(optimizer, [5000, 10000, 15000, 20000, 30000, 40000], 0.5)
 
 def main(args):
     print('\n>>>>>>>>>>>>>>>>>>> Train & Valid <<<<<<<<<<<<<<<<<<<<<<')
@@ -81,7 +85,6 @@ def train(args, epoch):
     losses, psnrs, ssims = metric.init_meters(args.loss)
     refine_net.train()
     criterion.train()
-    scheduler.step()
 
     for i, (input_img, gt_img, input_path, gt_path) in enumerate(train_loader):
         
@@ -97,7 +100,9 @@ def train(args, epoch):
         losses['total'].update(loss.item())
         loss.backward()
         optimizer.step()
+        scheduler.step()
         
+        # Save Intermediate Figure
         if 20000 <= i < 20003:
             print(f'syn: {syn_i_gt.mean()}, out: {out_img.mean()}, gt: {gt_img.mean()}')
             utils.viz_img(syn_i_gt, out_img, gt_img, args.out_root, gt_path)

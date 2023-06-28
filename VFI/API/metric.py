@@ -71,10 +71,10 @@ class Loss(nn.modules.loss._Loss):      # Wrapper of Loss Functions: (args.loss:
             
 # Optimizer Definition ============================#
 # Optimizer
-def adam(params, lr=0.001, betas=(0.9, 0.999), eps=1e-08):
+def adam(params, lr=0.002, betas=(0.9, 0.999), eps=1e-08):
     return torch.optim.Adam(params, lr=lr, betas=betas, eps=eps)
 
-def adamax(params, lr=0.001, betas=(0.9, 0.999)):  
+def adamax(params, lr=0.002, betas=(0.9, 0.999)):  
     return torch.optim.Adamax(params, lr=lr, betas=betas)
 
 # Scheduler
@@ -144,6 +144,6 @@ def print_log(epoch, num_epochs, one_epoch_time, oup_pnsr, oup_ssim, Lr):
     # write training log
     with open('./version/train_log.txt', 'a') as f:
         print(
-            'Date: {0}s, Time_Cost: {1:.0f}s, Epoch: [{2}/{3}], Val_PSNR:{4:.2f}, Val_SSIM:{5:.4f}, Lr:{6}'
+            'Date: {0}s, Time_Cost: {1:.0f}s, Epoch: [{2}/{3}], Val_PSNR:{4:.2f}, Val_SSIM:{5:.4f}, Lr:{6:.4f}'
             .format(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                     one_epoch_time, epoch, num_epochs, oup_pnsr, oup_ssim, Lr), file=f)

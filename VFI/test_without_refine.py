@@ -1,5 +1,5 @@
 """
-RAFT + MiDaS Guide Video Frame Interpolation Test.py
+RAFT + MiDaS Guide Video Frame Interpolation without RefineNet Test.py
 """
 
 # Library Import ====================================#
@@ -13,10 +13,10 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 from dataloader.main_dataloader import get_loader
-import config, raft_warping, raft_warping_softsplat
+import raft_warping, config
 from API import utils, UNet, metric
 
-print('\n>>>>>> RAFT + MiDaS Guide Video Frame Interpolation <<<<<')
+print('\n>>>>>>>> RAFT + MiDaS Guide without RefineNet <<<<<<<')
 args, unparsed = config.get_args("raft")
 cwd = os.getcwd()
 
@@ -32,21 +32,14 @@ print('\n>>>>>>>>>>>>>>>>>>>>> Initialize <<<<<<<<<<<<<<<<<<<<<<<<')
 test_loader = get_loader(args.data_root + 'test/', args.test_batch_size, mode='test', num_workers=args.num_workers, stride=2, shuffle=False)
 # test_loader = get_loader('data/', args.test_batch_size, mode='test', num_workers=args.num_workers, stride=1, shuffle=False)
 
-# RAFT + MiDaS + UNet Model Load
+# RAFT + MiDaS Model Load
 device = utils.torch_cuda()
-if args.softsplat:
-    raft_midas = raft_warping_softsplat.raft(args, device)
-else:
-    raft_midas = raft_warping.raft(args, device)
-
-refine_net = UNet.UNet(3, 3).to(device)
-print(f"Refine Net #params", sum([p.numel() for p in refine_net.parameters()]),'\n')
+raft_midas = raft_warping.raft(args, device)
 
 # Test loop ========================================#
 def test(args):
     time_taken = []
     losses, psnrs, ssims = metric.init_meters(args.loss)
-    refine_net.eval()
 
     with torch.no_grad():
         for i, (input_img, gt_img, input_path, gt_path) in enumerate(tqdm(test_loader)):
@@ -57,14 +50,13 @@ def test(args):
 
             start_time = time.time()
             syn_i_gt = raft_midas.exe(input_img, gt_img, input_path, gt_path)     # [B,3,512,960]
-            out_img = refine_net(syn_i_gt)                         # [B,3,512,960]            
             time_taken.append(time.time() - start_time)
 
-            metric.eval_metrics(out_img, gt_img, psnrs, ssims)
+            metric.eval_metrics(syn_i_gt, gt_img, psnrs, ssims)
 
             # Save Figure
-            # if (args.test_batch_size * (i+1) <= 150):
-            #     utils.viz_img(syn_i_gt, out_img, gt_img, args.out_root, gt_path)
+            # if (args.test_batch_size * (i+1) <= 50):
+            #     utils.viz_test_img(syn_i_gt, gt_img, args.out_root, gt_path)
 
     print("PSNR: %f, SSIM: %fn" %
           (psnrs.avg, ssims.avg))
@@ -74,12 +66,6 @@ def test(args):
 
 # Main Paragraph ====================================#        
 def main(args):
-    
-    assert args.load_from is not None
-
-    refine_net_dict = refine_net.state_dict()
-    refine_net.load_state_dict(torch.load(args.load_from)["state_dict"] , strict=True)
-
     test(args)
 
 # Execute ===========================================#        

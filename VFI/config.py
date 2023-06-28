@@ -32,6 +32,7 @@ class raft_config():
         # Model parameters
         self.model_arg.add_argument('--flow_model', default='raft_large', choices=['raft_large', 'raft_small'])
         self.model_arg.add_argument('--depth_model', default='DPT_Large', choices=['DPT_Large', 'DPT_Hybrid', 'MiDaS_small'])
+        self.model_arg.add_argument('--softsplat', default=False, type=bool)
 
         # Train & Test Parameters
         self.learn_arg.add_argument('--epochs', default=2, type=int)

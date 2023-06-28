@@ -51,48 +51,37 @@ class raft:
             # Flow Estimation
             self.f01 = self.model(input_img[0], input_img[1])[-1]       # [4,2,512,960]
             self.f10 = self.model(input_img[1], input_img[0])[-1]       
-            self.ft0gt = self.model(gt_img, input_img[0])[-1]           
-            self.ft1gt = self.model(gt_img, input_img[1])[-1]           
+            # self.ft0gt = self.model(gt_img, input_img[0])[-1]           
+            # self.ft1gt = self.model(gt_img, input_img[1])[-1]           
 
             # Depth Estimation
             self.d0 = depth.midas_pred(self.midas, input_img[0]).unsqueeze(1)        # [4,1,512,960]
             self.d1 = depth.midas_pred(self.midas, input_img[1]).unsqueeze(1)
                 
             # Flow & Depth Interpolation
-            # self.ft0 = self.interpolate_by_flow(self.f10*0.5, self.f10*0.5)           
-            # self.ft1 = self.interpolate_by_flow(self.f01*0.5, self.f01*0.5)
+            self.ft0 = self.interpolate_by_flow(self.f10*0.5, self.f10*0.5)           
+            self.ft1 = self.interpolate_by_flow(self.f01*0.5, self.f01*0.5)
 
             self.d0t = self.interpolate_by_flow(self.f01*0.5, self.d0)
             self.d1t = self.interpolate_by_flow(self.f10*0.5, self.d1)
                 
             # BackWarping
-            self.git0gt = self.back_warp(input_img[0], self.ft0gt)      # [4,3,512,960]
-            self.git1gt = self.back_warp(input_img[1], self.ft1gt)
-            # self.git0 = self.back_warp(input_img[0], self.ft0)
-            # self.git1 = self.back_warp(input_img[1], self.ft1)
+            # self.git0gt = self.back_warp(input_img[0], self.ft0gt)      # [4,3,512,960]
+            # self.git1gt = self.back_warp(input_img[1], self.ft1gt)
+            self.git0 = self.back_warp(input_img[0], self.ft0)
+            self.git1 = self.back_warp(input_img[1], self.ft1)
 
             # Hole Imputation
-            self.git0gt = self.interpolate_hole(self.git0gt, self.git1gt)
-            self.git1gt = self.interpolate_hole(self.git1gt, self.git0gt)
-            # self.git0 = self.interpolate_hole(self.git0, self.git1)
-            # self.git1 = self.interpolate_hole(self.git1, self.git0)
+            # self.git0gt = self.interpolate_hole(self.git0gt, self.git1gt)
+            # self.git1gt = self.interpolate_hole(self.git1gt, self.git0gt)
+            self.git0 = self.interpolate_hole(self.git0, self.git1)
+            self.git1 = self.interpolate_hole(self.git1, self.git0)
 
             # Synthesis
-            self.syn_i_gt = self.depth_guide_synthesis(self.git0gt, self.git1gt, self.d0t, self.d1t)                  # [4,3,512,960]
-            # self.syn_i = self.depth_guide_synthesis(self.git0, self.git1, self.d0t, self.d1t)
+            # self.syn_i_gt = self.depth_guide_synthesis(self.git0gt, self.git1gt, self.d0t, self.d1t)                  # [4,3,512,960]
+            self.syn_i = self.depth_guide_synthesis(self.git0, self.git1, self.d0t, self.d1t)
 
-            # Visualzie & Save file
-            # self.vis_flow(input_path, gt_path, save=True)               
-            # self.vis_warp(input_path, gt_path, save=True)
-            # self.vis_depth(input_path, gt_path, save=True)
-    
-        # Result Print
-        # print(f'Last Sample: {gt_path[0].split("/")[-2]}')
-        # print(f'ft0 Flow Estimated: {self.ft0.shape}, {self.ft0.mean()}, {self.ft0.dtype}')
-        # print(f'git0 Warped: {self.git0.shape}, {self.git0.mean()}, {self.git0.dtype}')
-        # print(f'syn_i Warped: {self.syn_i.shape}, {self.syn_i.mean()}, {self.syn_i.dtype}')
-
-        return self.syn_i_gt
+        return self.syn_i
     
     def interpolate_hole(self, image, other_image):
         mask = torch.zeros_like(image)
@@ -102,7 +91,7 @@ class raft:
         image = image + new
         return image
 
-    def interpolate_by_flow(self, flow, target):    # Replace yo Softsplat
+    def interpolate_by_flow(self, flow, target):    # Replace to Softsplat
         batch, channels, height, width = target.size()
         itp_flow = torch.zeros_like(target)
 
@@ -137,76 +126,6 @@ class raft:
         syn_i = valid_i0 + valid_i1
         result = syn_i.view((-1, 3, 512, 960))
         return result
-
-    def vis_flow(self, input_path, gt_path, save=True):
-        
-        for i, name in enumerate(gt_path):
-            
-            # Save format
-            save_f01 = self.f01.cpu().detach()[i]
-            save_f10 = self.f10.cpu().detach()[i]
-            save_ft0gt = self.ft0gt.cpu().detach()[i]
-            save_ft1gt = self.ft1gt.cpu().detach()[i]
-            save_ft0 = self.ft0.cpu().detach()[i]
-            save_ft1 = self.ft1.cpu().detach()[i]
-
-            # Numpy
-            name = name.split('/')[-2]
-            np.save(self.out_root + name + '/f01.npy', save_f01)
-            np.save(self.out_root + name + '/f10.npy', save_f10)
-            np.save(self.out_root + name + '/ft0gt.npy', save_ft0gt)
-            np.save(self.out_root + name + '/ft1gt.npy', save_ft1gt)
-            np.save(self.out_root + name + '/ft0.npy', save_ft0)
-            np.save(self.out_root + name + '/ft1.npy', save_ft1)
-
-            # Flow
-            utils.save_flow(save_f01, self.out_root + name + '/f01.png')
-            utils.save_flow(save_f10, self.out_root + name + '/f10.png')
-            utils.save_flow(save_ft0gt, self.out_root + name + '/ft0gt.png')
-            utils.save_flow(save_ft1gt, self.out_root + name + '/ft1gt.png')
-            utils.save_flow(save_ft0, self.out_root + name + '/ft0.png')
-            utils.save_flow(save_ft1, self.out_root + name + '/ft1.png')
-    
-    def vis_warp(self, input_path, gt_path, save=True):
-        
-        for i, name in enumerate(gt_path):
-
-            # Save format    
-            save_git0gt = self.git0gt.cpu().detach()[i].permute(1,2,0)
-            save_git1gt = self.git1gt.cpu().detach()[i].permute(1,2,0)
-            save_git0 = self.git0.cpu().detach()[i].permute(1,2,0)
-            save_git1 = self.git1.cpu().detach()[i].permute(1,2,0)
-            save_syn_i_gt = self.syn_i_gt.cpu().detach()[i].permute(1,2,0)
-            save_syn_i = self.syn_i.cpu().detach()[i].permute(1,2,0)
-
-            # Warp
-            name = name.split('/')[-2]
-            utils.save_img(save_git0gt, self.out_root + name + '/git0gt.png')
-            utils.save_img(save_git1gt, self.out_root + name +'/git1gt.png')
-            utils.save_img(save_git0, self.out_root + name +'/git0.png')
-            utils.save_img(save_git1, self.out_root + name +'/git1.png')
-
-            # Synthesis
-            utils.save_img(save_syn_i_gt, self.out_root + name +'/syn_i_gt.png')
-            utils.save_img(save_syn_i, self.out_root + name +'/syn_i.png')
-
-    def vis_depth(self, input_path, gt_path, save=True):
-        
-        for i, name in enumerate(gt_path):
-
-            # Save format    
-            save_d0 = self.d0.cpu().detach()[i,0]
-            save_d1 = self.d1.cpu().detach()[i,0]
-            save_dt0 = self.d0t.cpu().detach()[i,0]
-            save_dt1 = self.d1t.cpu().detach()[i,0]
-
-            # Depth
-            name = name.split('/')[-2]
-            utils.save_img(save_d0, self.out_root + name +'/d0.png')
-            utils.save_img(save_d1, self.out_root + name +'/d1.png')
-            utils.save_img(save_dt0, self.out_root + name +'/dt0.png')
-            utils.save_img(save_dt1, self.out_root + name +'/dt1.png')
-
 
 if __name__ == '__main__':
     args = create_parser().parse_args()
