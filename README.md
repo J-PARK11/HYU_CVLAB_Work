@@ -20,9 +20,9 @@ Notion: [Video Frame Interpolation Notion](https://www.notion.so/Video-Frame-Int
   
 ### Train & Test
 
-  python train.py --flow_model --depth_model --data_root --out_root --softsplat      
-  python test.py --flow_model --depth_model --data_root --out_root --softsplat      
-  python test_without_refine.py --flow_model --depth_model --data_root --out_root --softsplat      
+   python train.py --flow_model --depth_model --data_root --out_root --softsplat      
+   python test.py --flow_model --depth_model --data_root --out_root --softsplat      
+   python test_without_refine.py --flow_model --depth_model --data_root --out_root --softsplat      
 
 ## 🎮 Dynamic Object Semantic Segmentation
 ### To be updated
