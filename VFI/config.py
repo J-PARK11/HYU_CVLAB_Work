@@ -41,7 +41,7 @@ class raft_config():
         self.learn_arg.add_argument('--log_iter', default=1000, type=int)
         self.learn_arg.add_argument('--batch_size', default=6, type=int)
         self.learn_arg.add_argument('--test_batch_size', default=6, type=int)
-        self.learn_arg.add_argument('--loss', type=str, default='1*l1+0.5*Huber')
+        self.learn_arg.add_argument('--loss', type=str, default='1*l1')
         self.learn_arg.add_argument("--load_from"  ,type=str , default='checkpoint/model_best.pth')
 
         # Set-up parameters
