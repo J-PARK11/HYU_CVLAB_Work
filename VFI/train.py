@@ -16,7 +16,7 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 from dataloader.main_dataloader import get_loader
-import config, raft_warping, raft_warping_softsplat
+import config, raft_warping, raft_warping_softsplat_softmax
 from API import utils, UNet, metric
 
 print('\n>>>>>> RAFT + MiDaS Guide Video Frame Interpolation <<<<<')
@@ -40,7 +40,7 @@ valid_loader = get_loader(args.data_root + 'valid/', args.test_batch_size, mode=
 # RAFT + MiDaS + UNet Model Load
 device = utils.torch_cuda()
 if args.softsplat:
-    raft_midas = raft_warping_softsplat.raft(args, device)
+    raft_midas = raft_warping_softsplat_softmax.raft(args, device)
 else:
     raft_midas = raft_warping.raft(args, device)
 
@@ -50,7 +50,7 @@ print(f"Refine Net #params", sum([p.numel() for p in refine_net.parameters()]),'
 # Optimizer & Loss & Metric & Scheduler
 criterion = metric.Loss(args)
 optimizer = metric.adamax(refine_net.parameters())
-scheduler = metric.MultiStepLR(optimizer, [5000, 10000, 15000, 20000, 30000, 40000], 0.5)
+scheduler = metric.MultiStepLR(optimizer, [10000, 20000, 30000, 40000, 50000, 60000], 0.5)
 
 def main(args):
     print('\n>>>>>>>>>>>>>>>>>>> Train & Valid <<<<<<<<<<<<<<<<<<<<<<')

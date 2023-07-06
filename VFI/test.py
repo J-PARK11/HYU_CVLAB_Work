@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings(action='ignore')
 
 from dataloader.main_dataloader import get_loader
-import config, raft_warping, raft_warping_softsplat
+import config, raft_warping, raft_warping_softsplat_softmax
 from API import utils, UNet, metric
 
 print('\n>>>>>> RAFT + MiDaS Guide Video Frame Interpolation <<<<<')
@@ -35,7 +35,7 @@ test_loader = get_loader(args.data_root + 'test/', args.test_batch_size, mode='t
 # RAFT + MiDaS + UNet Model Load
 device = utils.torch_cuda()
 if args.softsplat:
-    raft_midas = raft_warping_softsplat.raft(args, device)
+    raft_midas = raft_warping_softsplat_softmax.raft(args, device)
 else:
     raft_midas = raft_warping.raft(args, device)
 
@@ -56,15 +56,16 @@ def test(args):
             gt_img = gt_img.to(device)                             # [4,3,512,960]
 
             start_time = time.time()
-            syn_i_gt = raft_midas.exe(input_img, gt_img, input_path, gt_path)     # [B,3,512,960]
-            out_img = refine_net(syn_i_gt)                         # [B,3,512,960]            
+            syn_i = raft_midas.exe(input_img, gt_img, input_path, gt_path)     # [B,3,512,960]
+            # out_img = refine_net(syn_i)                         # [B,3,512,960]            
+            out_img = syn_i
             time_taken.append(time.time() - start_time)
 
             metric.eval_metrics(out_img, gt_img, psnrs, ssims)
 
             # Save Figure
             # if (args.test_batch_size * (i+1) <= 150):
-            #     utils.viz_img(syn_i_gt, out_img, gt_img, args.out_root, gt_path)
+            #     utils.viz_img(syn_i, out_img, gt_img, args.out_root, gt_path)
 
     print("PSNR: %f, SSIM: %fn" %
           (psnrs.avg, ssims.avg))

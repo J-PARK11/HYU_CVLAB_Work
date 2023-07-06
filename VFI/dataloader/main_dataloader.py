@@ -40,7 +40,6 @@ class Main_dataloader(Dataset):
                         self.datasets.append(batch_set)
                 else:
                     pass
-
         
         self.transforms = transforms.Compose([
             # transforms.CenterCrop(self.crop_size),

@@ -7,7 +7,6 @@ Date: 2023-06-24 06:19:49s, Time_Cost: 51014s, Epoch: [2/5], Val_PSNR:23.05, Val
 Date: 2023-06-24 21:17:03s, Time_Cost: 53835s, Epoch: [3/5], Val_PSNR:-7.68, Val_SSIM:0.9729, Lr:0.004
 Date: 2023-06-25 13:00:52s, Time_Cost: 56629s, Epoch: [4/5], Val_PSNR:-63.63, Val_SSIM:0.9714, Lr:0.004
 Date: 2023-06-26 05:30:27s, Time_Cost: 59375s, Epoch: [5/5], Val_PSNR:-19.44, Val_SSIM:0.9716, Lr:0.004
-Date: 2023-06-27 01:04:35s, Time_Cost: 46808s, Epoch: [1/2], Val_PSNR:31.47, Val_SSIM:0.9999, Lr:0.0005
 
 {230627 보간된 Flow + 일반 와핑 방식으로 모델 학습}
 {Train Dataloader Stride 2 주고, UNet 구조 간소화 수행}
@@ -20,3 +19,9 @@ Date: 2023-06-28 02:32:01s, Time_Cost: 37022s, Epoch: [2/2], Val_PSNR:28.50, Val
 python train.py --data_root /home/work/VFIT/data/vimeo_septuplet/ --out_root ./output/test/ --softsplat True
 Date: 2023-06-28 16:28:40s, Time_Cost: 36727s, Epoch: [1/2], Val_PSNR:28.14, Val_SSIM:0.9998, Lr:0.0001
 Date: 2023-06-29 02:46:38s, Time_Cost: 37077s, Epoch: [2/2], Val_PSNR:28.27, Val_SSIM:0.9998, Lr:0.0000
+
+Date: 2023-06-29 17:30:41s, Time_Cost: 36682s, Epoch: [1/5], Val_PSNR:28.15, Val_SSIM:0.9998, Lr:0.0001
+Date: 2023-06-30 03:48:25s, Time_Cost: 37064s, Epoch: [2/5], Val_PSNR:28.28, Val_SSIM:0.9998, Lr:0.0000
+Date: 2023-06-30 14:10:00s, Time_Cost: 37295s, Epoch: [3/5], Val_PSNR:28.31, Val_SSIM:0.9998, Lr:0.0000
+Date: 2023-07-01 00:37:22s, Time_Cost: 37641s, Epoch: [4/5], Val_PSNR:28.33, Val_SSIM:0.9998, Lr:0.0000
+Date: 2023-07-01 11:10:06s, Time_Cost: 37965s, Epoch: [5/5], Val_PSNR:28.34, Val_SSIM:0.9998, Lr:0.0000

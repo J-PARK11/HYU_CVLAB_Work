@@ -1,3 +1,4 @@
+
 import os
 import os.path as osp
 import numpy as np
@@ -22,7 +23,7 @@ def create_parser():
     
     # Root parameters
     parser.add_argument('--data_root', default='./data/sample/', type=str)
-    parser.add_argument('--out_root', default='./output_softsplat/', type=str)
+    parser.add_argument('--out_root', default='./output/softmax_softsplat_test/', type=str)
     
     # Model parameters
     parser.add_argument('--flow_model', default='raft_large', choices=['raft_large', 'raft_small'])
@@ -101,30 +102,30 @@ class raft:
                 self.f0tgt = self.model(input_img[0], gt_img)[-1]       
                 self.f1tgt = self.model(input_img[1], gt_img)[-1]       
 
-                # Softslpat Flow Warping for Visualization
-                self.f0t = softsplat.FunctionSoftsplat(tenInput=self.f01*0.5, tenFlow=self.f01*0.5,     # [4,2,512,960]
-                                                        tenMetric=None, strType='average')   
-                self.f1t = softsplat.FunctionSoftsplat(tenInput=self.f10*0.5, tenFlow=self.f10*0.5,     
-                                                        tenMetric=None, strType='average') 
-
                 # Depth Estimation
                 self.d0 = depth.midas_pred(self.midas, input_img[0]).unsqueeze(1)        # [4,1,512,960]
                 self.d1 = depth.midas_pred(self.midas, input_img[1]).unsqueeze(1)
+
+                # Softslpat Flow Warping for Visualization
+                self.f0t = softsplat.FunctionSoftsplat(tenInput=self.f01*0.5, tenFlow=self.f01*0.5,     # [4,2,512,960]
+                                                        tenMetric=self.d0, strType='softmax')   
+                self.f1t = softsplat.FunctionSoftsplat(tenInput=self.f10*0.5, tenFlow=self.f10*0.5,     
+                                                        tenMetric=self.d1, strType='softmax') 
                     
                 # Softsplat Frame & Depth Warping
                 self.gi0t = softsplat.FunctionSoftsplat(tenInput=input_img[0], tenFlow=self.f01*0.5,     # [4,3,512,960]
-                                                        tenMetric=None, strType='average')
+                                                        tenMetric=self.d0, strType='softmax')
                 self.gi1t = softsplat.FunctionSoftsplat(tenInput=input_img[1], tenFlow=self.f10*0.5,
-                                                        tenMetric=None, strType='average')
+                                                        tenMetric=self.d1, strType='softmax')
                 self.gi0tgt = softsplat.FunctionSoftsplat(tenInput=input_img[0], tenFlow=self.f0tgt,     
-                                                        tenMetric=None, strType='average')
+                                                        tenMetric=self.d0, strType='softmax')
                 self.gi1tgt = softsplat.FunctionSoftsplat(tenInput=input_img[1], tenFlow=self.f1tgt,
-                                                        tenMetric=None, strType='average')
+                                                        tenMetric=self.d1, strType='softmax')
 
                 self.d0t = softsplat.FunctionSoftsplat(tenInput=self.d0, tenFlow=self.f01*0.5,          # [4,1,512,960]
-                                                        tenMetric=None, strType='average')
+                                                        tenMetric=self.d0, strType='softmax')
                 self.d1t = softsplat.FunctionSoftsplat(tenInput=self.d1, tenFlow=self.f10*0.5,
-                                                        tenMetric=None, strType='average')
+                                                        tenMetric=self.d1, strType='softmax')
                     
                 # Hole Imputation
                 self.gi0t = self.interpolate_hole(self.gi0t, self.gi1t)                       # [4,3,512,960]
@@ -137,8 +138,8 @@ class raft:
                 self.syn_i_gt = self.depth_guide_synthesis(self.gi0tgt, self.gi1tgt, self.d0t, self.d1t)
 
                 # Visualzie & Save file
-                # self.vis_flow(input_path, gt_path, save=True)               
-                # self.vis_warp(input_path, gt_path, save=True)
+                self.vis_flow(input_path, gt_path, save=True)               
+                self.vis_warp(input_path, gt_path, save=True)
                 self.vis_depth(input_path, gt_path, save=True)
     
             # Result Print
@@ -180,12 +181,12 @@ class raft:
 
             # Numpy
             name = name.split('/')[-2]
-            np.save(self.out_root + name + '/f01.npy', save_f01)
-            np.save(self.out_root + name + '/f10.npy', save_f10)
-            np.save(self.out_root + name + '/f0t.npy', save_f0t)
-            np.save(self.out_root + name + '/f1t.npy', save_f1t)
-            np.save(self.out_root + name + '/f0tgt.npy', save_f0tgt)
-            np.save(self.out_root + name + '/f1tgt.npy', save_f1tgt)
+            # np.save(self.out_root + name + '/f01.npy', save_f01)
+            # np.save(self.out_root + name + '/f10.npy', save_f10)
+            # np.save(self.out_root + name + '/f0t.npy', save_f0t)
+            # np.save(self.out_root + name + '/f1t.npy', save_f1t)
+            # np.save(self.out_root + name + '/f0tgt.npy', save_f0tgt)
+            # np.save(self.out_root + name + '/f1tgt.npy', save_f1tgt)
 
             # Flow
             utils.save_flow(save_f01, self.out_root + name + '/f01.png')

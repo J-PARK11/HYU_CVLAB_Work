@@ -74,7 +74,7 @@ class Loss(nn.modules.loss._Loss):      # Wrapper of Loss Functions: (args.loss:
 def adam(params, lr=0.002, betas=(0.9, 0.999), eps=1e-08):
     return torch.optim.Adam(params, lr=lr, betas=betas, eps=eps)
 
-def adamax(params, lr=0.002, betas=(0.9, 0.999)):  
+def adamax(params, lr=0.004, betas=(0.9, 0.999)):  
     return torch.optim.Adamax(params, lr=lr, betas=betas)
 
 # Scheduler

@@ -2,8 +2,15 @@
 Project: Video Frame Interpolation, Semantic Segmentation
 
 ## 📑 Index
+* A Unified Pyramid Recurrent Network
 * Optical Flow + Monocular Depth Guide Video Frame Interpolation
 * Dynamic Object Semantic Segmentation
+
+## 🌺 A Unified Pyramid Recurrent Network
+
+### Link
+Notion: [A Unified pyramid Recurrent Network](https://www.notion.so/UPR-Net-98f202b271844dd4af7263f0b94ac7b1)
+
 
 ## 🎞️ Optical Flow + Monocular Depth Guide Video Frame Interpolation
 

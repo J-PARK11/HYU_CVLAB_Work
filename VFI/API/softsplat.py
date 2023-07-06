@@ -336,7 +336,6 @@ def FunctionSoftsplat(tenInput, tenFlow, tenMetric, strType):
 	elif strType == 'softmax':
 		tenInput = torch.cat([ tenInput * tenMetric.exp(), tenMetric.exp() ], 1)
 
-
 	tenOutput = _FunctionSoftsplat.apply(tenInput, tenFlow)
 
 	if strType != 'summation':

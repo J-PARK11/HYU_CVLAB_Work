@@ -7,3 +7,6 @@ VFI/output_softsplat/
 VFI/tensorboard/
 VFI/core
 
+UPR-Net/.vscode/
+UPR-Net/checkpoints/
+UPR-Net/raw/

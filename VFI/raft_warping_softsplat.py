@@ -35,7 +35,7 @@ class raft:
         elif self.args.flow_model == 'raft_large':
             self.weight = torchvision.models.optical_flow.Raft_Large_Weights.C_T_V2
             self.model = torchvision.models.optical_flow.raft_large(self.weight).to(self.device)
-        print(f"{self.args.flow_model} softsplat #params", sum([p.numel() for p in self.model.parameters()]))
+        print(f"{self.args.flow_model} softsplat average #params", sum([p.numel() for p in self.model.parameters()]))
 
         # MiDas Mono-Depth Model & Transformer Load
         self.midas, self.midas_transform = depth.Midas_depth(self.args.depth_model)

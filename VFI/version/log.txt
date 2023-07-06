@@ -390,3 +390,181 @@ Validation for epoch = 2
 ========= Training Complete =========
 
 >>>>>>>>>>>>>>>>>>>>> Complete <<<<<<<<<<<<<<<<<<<<<<<<
+
+{230628 보간된 Flow + Softsplat 방식으로 모델 학습}
+{Train Dataloader Stride 2 주고, UNet 구조 간소화 수행}
+>>>>>> RAFT + MiDaS Guide Video Frame Interpolation <<<<<
+
+Config: Namespace(batch_size=6, checkpoint_epoch=1, checkpoint_root='./checkpoint/', crop_size=(512, 960), cuda=True, data_root='/home/work/VFIT/data/vimeo_septuplet/', depth_model='DPT_Large', device='cuda', epochs=5, flow_model='raft_large', gpu=0, load_from='checkpoint/model_best.pth', log_iter=1000, loss='1*l1', num_workers=4, out_root='./output/temp/', seed=1123, softsplat=True, tensorboard_root='./tensorboard/', test_batch_size=6, use_gpu=True)
+
+>>>>>>>>>>>>>>>>>>>>> Initialize <<<<<<<<<<<<<<<<<<<<<<<<
+train RAFT + MiDaS Guide VFI DataLoader: 145818 batch,  input 2 frames output 1 frames
+input: 2 x torch.Size([6, 3, 512, 960]),  gt: torch.Size([6, 3, 512, 960]),  torch.float32,  0.407
+valid RAFT + MiDaS Guide VFI DataLoader: 18518 batch,  input 2 frames output 1 frames
+input: 2 x torch.Size([6, 3, 512, 960]),  gt: torch.Size([6, 3, 512, 960]),  torch.float32,  0.473
+CUDA available True,  Usuable devices: 1,   Current device: 0,  name: NVIDIA A100-PCIE-40GB
+
+raft_large softsplat #params 5257536
+Using cache found in /home/work/.cache/torch/hub/intel-isl_MiDaS_master
+Using cache found in /home/work/.cache/torch/hub/intel-isl_MiDaS_master
+DPT_Large #params 344055465
+Refine Net #params 7990595 
+
+1.000 * l1
+
+>>>>>>>>>>>>>>>>>>> Train & Valid <<<<<<<<<<<<<<<<<<<<<<
+2023-06-29 07:19:48 Train Epoch: 1 [1/24303]    Loss: 0.4431    PSNR: 7.2067  Lr:0.0020
+2023-06-29 07:42:11 Train Epoch: 1 [1001/24303] Loss: 0.0321    PSNR: 25.4745  Lr:0.0020
+2023-06-29 08:04:35 Train Epoch: 1 [2001/24303] Loss: 0.0264    PSNR: 28.2931  Lr:0.0020
+2023-06-29 08:26:58 Train Epoch: 1 [3001/24303] Loss: 0.0248    PSNR: 30.7912  Lr:0.0020
+2023-06-29 08:49:22 Train Epoch: 1 [4001/24303] Loss: 0.0243    PSNR: 27.1640  Lr:0.0020
+2023-06-29 09:11:46 Train Epoch: 1 [5001/24303] Loss: 0.0233    PSNR: 27.4190  Lr:0.0010
+2023-06-29 09:34:09 Train Epoch: 1 [6001/24303] Loss: 0.0216    PSNR: 28.6841  Lr:0.0010
+2023-06-29 09:56:31 Train Epoch: 1 [7001/24303] Loss: 0.0215    PSNR: 29.6842  Lr:0.0010
+2023-06-29 10:18:53 Train Epoch: 1 [8001/24303] Loss: 0.0211    PSNR: 29.7575  Lr:0.0010
+2023-06-29 10:41:17 Train Epoch: 1 [9001/24303] Loss: 0.0215    PSNR: 23.0472  Lr:0.0010
+2023-06-29 11:03:41 Train Epoch: 1 [10001/24303]        Loss: 0.0211    PSNR: 23.7722  Lr:0.0005
+2023-06-29 11:26:05 Train Epoch: 1 [11001/24303]        Loss: 0.0207    PSNR: 29.6762  Lr:0.0005
+2023-06-29 11:48:29 Train Epoch: 1 [12001/24303]        Loss: 0.0204    PSNR: 29.7355  Lr:0.0005
+2023-06-29 12:10:53 Train Epoch: 1 [13001/24303]        Loss: 0.0205    PSNR: 28.7614  Lr:0.0005
+2023-06-29 12:33:16 Train Epoch: 1 [14001/24303]        Loss: 0.0203    PSNR: 26.5671  Lr:0.0005
+2023-06-29 12:55:39 Train Epoch: 1 [15001/24303]        Loss: 0.0204    PSNR: 26.9130  Lr:0.0003
+2023-06-29 13:18:03 Train Epoch: 1 [16001/24303]        Loss: 0.0200    PSNR: 30.2008  Lr:0.0003
+2023-06-29 13:40:26 Train Epoch: 1 [17001/24303]        Loss: 0.0201    PSNR: 30.3216  Lr:0.0003
+2023-06-29 14:02:50 Train Epoch: 1 [18001/24303]        Loss: 0.0199    PSNR: 26.5967  Lr:0.0003
+2023-06-29 14:25:13 Train Epoch: 1 [19001/24303]        Loss: 0.0203    PSNR: 24.8335  Lr:0.0003
+syn: 0.41321325302124023, out: 0.4132939577102661, gt: 0.41558679938316345
+2023-06-29 14:47:57 Train Epoch: 1 [20001/24303]        Loss: 0.0199    PSNR: 27.7225  Lr:0.0001
+syn: 0.3632949888706207, out: 0.36304208636283875, gt: 0.3628791570663452
+syn: 0.3380316197872162, out: 0.3377012610435486, gt: 0.3365810811519623
+2023-06-29 15:12:46 Train Epoch: 1 [21001/24303]        Loss: 0.0196    PSNR: 28.4418  Lr:0.0001
+2023-06-29 15:35:09 Train Epoch: 1 [22001/24303]        Loss: 0.0197    PSNR: 25.6451  Lr:0.0001
+2023-06-29 15:57:32 Train Epoch: 1 [23001/24303]        Loss: 0.0197    PSNR: 25.8119  Lr:0.0001
+2023-06-29 16:19:56 Train Epoch: 1 [24001/24303]        Loss: 0.0199    PSNR: 28.9579  Lr:0.0001
+Validation for epoch = 1
+(36682s) Epoch [1/5], Val_PSNR:28.15, Val_SSIM:0.9998
+2023-06-29 17:30:44 Train Epoch: 2 [1/24303]    Loss: 0.0182    PSNR: 27.1162  Lr:0.0001
+2023-06-29 17:53:11 Train Epoch: 2 [1001/24303] Loss: 0.0197    PSNR: 28.8008  Lr:0.0001
+2023-06-29 18:15:39 Train Epoch: 2 [2001/24303] Loss: 0.0196    PSNR: 26.6148  Lr:0.0001
+2023-06-29 18:38:06 Train Epoch: 2 [3001/24303] Loss: 0.0198    PSNR: 27.9428  Lr:0.0001
+2023-06-29 19:00:33 Train Epoch: 2 [4001/24303] Loss: 0.0194    PSNR: 25.0024  Lr:0.0001
+2023-06-29 19:22:59 Train Epoch: 2 [5001/24303] Loss: 0.0197    PSNR: 30.4085  Lr:0.0001
+2023-06-29 19:45:26 Train Epoch: 2 [6001/24303] Loss: 0.0196    PSNR: 30.2930  Lr:0.0001
+2023-06-29 20:07:52 Train Epoch: 2 [7001/24303] Loss: 0.0195    PSNR: 24.7165  Lr:0.0001
+2023-06-29 20:30:18 Train Epoch: 2 [8001/24303] Loss: 0.0198    PSNR: 30.5404  Lr:0.0001
+2023-06-29 20:52:45 Train Epoch: 2 [9001/24303] Loss: 0.0194    PSNR: 31.9937  Lr:0.0001
+2023-06-29 21:15:13 Train Epoch: 2 [10001/24303]        Loss: 0.0193    PSNR: 26.8017  Lr:0.0001
+2023-06-29 21:37:41 Train Epoch: 2 [11001/24303]        Loss: 0.0196    PSNR: 28.3910  Lr:0.0001
+2023-06-29 22:00:07 Train Epoch: 2 [12001/24303]        Loss: 0.0195    PSNR: 25.6251  Lr:0.0001
+2023-06-29 22:22:34 Train Epoch: 2 [13001/24303]        Loss: 0.0196    PSNR: 30.4620  Lr:0.0001
+2023-06-29 22:45:01 Train Epoch: 2 [14001/24303]        Loss: 0.0196    PSNR: 28.3233  Lr:0.0001
+2023-06-29 23:07:28 Train Epoch: 2 [15001/24303]        Loss: 0.0195    PSNR: 31.3239  Lr:0.0001
+2023-06-29 23:29:54 Train Epoch: 2 [16001/24303]        Loss: 0.0194    PSNR: 27.5978  Lr:0.0000
+2023-06-29 23:52:19 Train Epoch: 2 [17001/24303]        Loss: 0.0194    PSNR: 32.2127  Lr:0.0000
+2023-06-30 00:14:46 Train Epoch: 2 [18001/24303]        Loss: 0.0192    PSNR: 29.5118  Lr:0.0000
+2023-06-30 00:37:12 Train Epoch: 2 [19001/24303]        Loss: 0.0193    PSNR: 26.8644  Lr:0.0000
+syn: 0.39987584948539734, out: 0.3997550904750824, gt: 0.39547938108444214
+2023-06-30 01:01:46 Train Epoch: 2 [20001/24303]        Loss: 0.0192    PSNR: 25.4370  Lr:0.0000
+syn: 0.3165666460990906, out: 0.31584545969963074, gt: 0.3157906234264374
+syn: 0.34287142753601074, out: 0.3431621491909027, gt: 0.3415544927120209
+2023-06-30 01:30:15 Train Epoch: 2 [21001/24303]        Loss: 0.0195    PSNR: 29.5318  Lr:0.0000
+2023-06-30 01:52:40 Train Epoch: 2 [22001/24303]        Loss: 0.0194    PSNR: 35.5871  Lr:0.0000
+2023-06-30 02:15:05 Train Epoch: 2 [23001/24303]        Loss: 0.0194    PSNR: 28.9475  Lr:0.0000
+2023-06-30 02:37:30 Train Epoch: 2 [24001/24303]        Loss: 0.0192    PSNR: 29.8508  Lr:0.0000
+Validation for epoch = 2
+(37064s) Epoch [2/5], Val_PSNR:28.28, Val_SSIM:0.9998
+2023-06-30 03:48:28 Train Epoch: 3 [1/24303]    Loss: 0.0151    PSNR: 30.2423  Lr:0.0000
+2023-06-30 04:10:52 Train Epoch: 3 [1001/24303] Loss: 0.0192    PSNR: 29.1340  Lr:0.0000
+2023-06-30 04:33:15 Train Epoch: 3 [2001/24303] Loss: 0.0194    PSNR: 25.9808  Lr:0.0000
+2023-06-30 04:55:39 Train Epoch: 3 [3001/24303] Loss: 0.0191    PSNR: 28.4229  Lr:0.0000
+2023-06-30 05:18:04 Train Epoch: 3 [4001/24303] Loss: 0.0194    PSNR: 27.8847  Lr:0.0000
+2023-06-30 05:40:28 Train Epoch: 3 [5001/24303] Loss: 0.0195    PSNR: 26.2264  Lr:0.0000
+2023-06-30 06:02:52 Train Epoch: 3 [6001/24303] Loss: 0.0192    PSNR: 27.8156  Lr:0.0000
+2023-06-30 06:25:16 Train Epoch: 3 [7001/24303] Loss: 0.0193    PSNR: 28.4003  Lr:0.0000
+2023-06-30 06:47:41 Train Epoch: 3 [8001/24303] Loss: 0.0195    PSNR: 27.8507  Lr:0.0000
+2023-06-30 07:10:06 Train Epoch: 3 [9001/24303] Loss: 0.0196    PSNR: 30.0694  Lr:0.0000
+2023-06-30 07:32:31 Train Epoch: 3 [10001/24303]        Loss: 0.0193    PSNR: 26.8052  Lr:0.0000
+2023-06-30 07:54:54 Train Epoch: 3 [11001/24303]        Loss: 0.0192    PSNR: 28.2698  Lr:0.0000
+2023-06-30 08:17:18 Train Epoch: 3 [12001/24303]        Loss: 0.0194    PSNR: 26.7406  Lr:0.0000
+2023-06-30 08:39:42 Train Epoch: 3 [13001/24303]        Loss: 0.0193    PSNR: 25.0871  Lr:0.0000
+2023-06-30 09:02:05 Train Epoch: 3 [14001/24303]        Loss: 0.0192    PSNR: 29.1617  Lr:0.0000
+2023-06-30 09:24:29 Train Epoch: 3 [15001/24303]        Loss: 0.0192    PSNR: 27.1181  Lr:0.0000
+2023-06-30 09:46:50 Train Epoch: 3 [16001/24303]        Loss: 0.0191    PSNR: 26.1285  Lr:0.0000
+2023-06-30 10:09:15 Train Epoch: 3 [17001/24303]        Loss: 0.0193    PSNR: 30.6911  Lr:0.0000
+2023-06-30 10:31:37 Train Epoch: 3 [18001/24303]        Loss: 0.0192    PSNR: 26.9003  Lr:0.0000
+2023-06-30 10:54:01 Train Epoch: 3 [19001/24303]        Loss: 0.0192    PSNR: 28.5780  Lr:0.0000
+syn: 0.4182223379611969, out: 0.4182590842247009, gt: 0.42413875460624695
+2023-06-30 11:20:15 Train Epoch: 3 [20001/24303]        Loss: 0.0192    PSNR: 22.7754  Lr:0.0000
+syn: 0.3287861943244934, out: 0.32885345816612244, gt: 0.32843613624572754
+syn: 0.3090112507343292, out: 0.30607348680496216, gt: 0.305851012468338
+2023-06-30 11:52:07 Train Epoch: 3 [21001/24303]        Loss: 0.0189    PSNR: 28.8509  Lr:0.0000
+2023-06-30 12:14:32 Train Epoch: 3 [22001/24303]        Loss: 0.0192    PSNR: 33.7784  Lr:0.0000
+2023-06-30 12:36:55 Train Epoch: 3 [23001/24303]        Loss: 0.0194    PSNR: 26.9419  Lr:0.0000
+2023-06-30 12:59:20 Train Epoch: 3 [24001/24303]        Loss: 0.0191    PSNR: 25.5088  Lr:0.0000
+Validation for epoch = 3
+(37295s) Epoch [3/5], Val_PSNR:28.31, Val_SSIM:0.9998
+2023-06-30 14:10:03 Train Epoch: 4 [1/24303]    Loss: 0.0117    PSNR: 32.7133  Lr:0.0000
+2023-06-30 14:32:28 Train Epoch: 4 [1001/24303] Loss: 0.0195    PSNR: 29.7788  Lr:0.0000
+2023-06-30 14:54:53 Train Epoch: 4 [2001/24303] Loss: 0.0194    PSNR: 31.4257  Lr:0.0000
+2023-06-30 15:17:18 Train Epoch: 4 [3001/24303] Loss: 0.0192    PSNR: 25.8249  Lr:0.0000
+2023-06-30 15:39:43 Train Epoch: 4 [4001/24303] Loss: 0.0196    PSNR: 26.5671  Lr:0.0000
+2023-06-30 16:02:08 Train Epoch: 4 [5001/24303] Loss: 0.0193    PSNR: 29.0409  Lr:0.0000
+2023-06-30 16:24:32 Train Epoch: 4 [6001/24303] Loss: 0.0191    PSNR: 26.4684  Lr:0.0000
+2023-06-30 16:46:57 Train Epoch: 4 [7001/24303] Loss: 0.0193    PSNR: 27.1951  Lr:0.0000
+2023-06-30 17:09:21 Train Epoch: 4 [8001/24303] Loss: 0.0193    PSNR: 29.3356  Lr:0.0000
+2023-06-30 17:31:46 Train Epoch: 4 [9001/24303] Loss: 0.0192    PSNR: 32.0098  Lr:0.0000
+2023-06-30 17:54:10 Train Epoch: 4 [10001/24303]        Loss: 0.0192    PSNR: 28.4492  Lr:0.0000
+2023-06-30 18:16:35 Train Epoch: 4 [11001/24303]        Loss: 0.0193    PSNR: 30.7205  Lr:0.0000
+2023-06-30 18:39:00 Train Epoch: 4 [12001/24303]        Loss: 0.0194    PSNR: 27.2093  Lr:0.0000
+2023-06-30 19:01:23 Train Epoch: 4 [13001/24303]        Loss: 0.0190    PSNR: 27.7950  Lr:0.0000
+2023-06-30 19:23:47 Train Epoch: 4 [14001/24303]        Loss: 0.0194    PSNR: 29.0203  Lr:0.0000
+2023-06-30 19:46:12 Train Epoch: 4 [15001/24303]        Loss: 0.0192    PSNR: 28.4344  Lr:0.0000
+2023-06-30 20:08:36 Train Epoch: 4 [16001/24303]        Loss: 0.0188    PSNR: 30.6155  Lr:0.0000
+2023-06-30 20:31:00 Train Epoch: 4 [17001/24303]        Loss: 0.0191    PSNR: 25.2818  Lr:0.0000
+2023-06-30 20:53:24 Train Epoch: 4 [18001/24303]        Loss: 0.0192    PSNR: 30.5932  Lr:0.0000
+2023-06-30 21:15:48 Train Epoch: 4 [19001/24303]        Loss: 0.0191    PSNR: 26.4795  Lr:0.0000
+syn: 0.3483279049396515, out: 0.347955584526062, gt: 0.3507627546787262
+2023-06-30 21:43:45 Train Epoch: 4 [20001/24303]        Loss: 0.0192    PSNR: 27.7170  Lr:0.0000
+syn: 0.3902599513530731, out: 0.3913991153240204, gt: 0.39099153876304626
+syn: 0.42576298117637634, out: 0.4266433119773865, gt: 0.4260658025741577
+2023-06-30 22:19:14 Train Epoch: 4 [21001/24303]        Loss: 0.0192    PSNR: 28.7955  Lr:0.0000
+2023-06-30 22:41:38 Train Epoch: 4 [22001/24303]        Loss: 0.0189    PSNR: 30.2949  Lr:0.0000
+2023-06-30 23:04:02 Train Epoch: 4 [23001/24303]        Loss: 0.0193    PSNR: 28.6682  Lr:0.0000
+2023-06-30 23:26:26 Train Epoch: 4 [24001/24303]        Loss: 0.0191    PSNR: 27.6926  Lr:0.0000
+Validation for epoch = 4
+(37641s) Epoch [4/5], Val_PSNR:28.33, Val_SSIM:0.9998
+2023-07-01 00:37:24 Train Epoch: 5 [1/24303]    Loss: 0.0106    PSNR: 31.7892  Lr:0.0000
+2023-07-01 00:59:50 Train Epoch: 5 [1001/24303] Loss: 0.0193    PSNR: 31.3641  Lr:0.0000
+2023-07-01 01:22:16 Train Epoch: 5 [2001/24303] Loss: 0.0191    PSNR: 30.1939  Lr:0.0000
+2023-07-01 01:44:44 Train Epoch: 5 [3001/24303] Loss: 0.0192    PSNR: 26.8049  Lr:0.0000
+2023-07-01 02:07:10 Train Epoch: 5 [4001/24303] Loss: 0.0192    PSNR: 28.5076  Lr:0.0000
+2023-07-01 02:29:37 Train Epoch: 5 [5001/24303] Loss: 0.0192    PSNR: 25.9383  Lr:0.0000
+2023-07-01 02:52:03 Train Epoch: 5 [6001/24303] Loss: 0.0193    PSNR: 30.1400  Lr:0.0000
+2023-07-01 03:14:29 Train Epoch: 5 [7001/24303] Loss: 0.0192    PSNR: 25.6086  Lr:0.0000
+2023-07-01 03:36:56 Train Epoch: 5 [8001/24303] Loss: 0.0192    PSNR: 27.7441  Lr:0.0000
+2023-07-01 03:59:22 Train Epoch: 5 [9001/24303] Loss: 0.0190    PSNR: 27.2091  Lr:0.0000
+2023-07-01 04:21:47 Train Epoch: 5 [10001/24303]        Loss: 0.0192    PSNR: 28.9351  Lr:0.0000
+2023-07-01 04:44:13 Train Epoch: 5 [11001/24303]        Loss: 0.0192    PSNR: 26.7334  Lr:0.0000
+2023-07-01 05:06:37 Train Epoch: 5 [12001/24303]        Loss: 0.0192    PSNR: 25.3465  Lr:0.0000
+2023-07-01 05:29:02 Train Epoch: 5 [13001/24303]        Loss: 0.0192    PSNR: 26.4896  Lr:0.0000
+2023-07-01 05:51:26 Train Epoch: 5 [14001/24303]        Loss: 0.0192    PSNR: 26.9877  Lr:0.0000
+2023-07-01 06:13:50 Train Epoch: 5 [15001/24303]        Loss: 0.0193    PSNR: 29.8342  Lr:0.0000
+2023-07-01 06:36:14 Train Epoch: 5 [16001/24303]        Loss: 0.0192    PSNR: 28.1386  Lr:0.0000
+2023-07-01 06:58:38 Train Epoch: 5 [17001/24303]        Loss: 0.0194    PSNR: 26.7021  Lr:0.0000
+2023-07-01 07:21:01 Train Epoch: 5 [18001/24303]        Loss: 0.0188    PSNR: 28.4248  Lr:0.0000
+2023-07-01 07:43:24 Train Epoch: 5 [19001/24303]        Loss: 0.0191    PSNR: 30.0542  Lr:0.0000
+syn: 0.37626126408576965, out: 0.37637707591056824, gt: 0.37657272815704346
+2023-07-01 08:13:18 Train Epoch: 5 [20001/24303]        Loss: 0.0194    PSNR: 31.4062  Lr:0.0000
+syn: 0.48050209879875183, out: 0.4819239675998688, gt: 0.48458918929100037
+syn: 0.275714248418808, out: 0.27519819140434265, gt: 0.2752396762371063
+2023-07-01 08:52:14 Train Epoch: 5 [21001/24303]        Loss: 0.0190    PSNR: 26.0839  Lr:0.0000
+2023-07-01 09:14:37 Train Epoch: 5 [22001/24303]        Loss: 0.0192    PSNR: 25.3922  Lr:0.0000
+2023-07-01 09:37:01 Train Epoch: 5 [23001/24303]        Loss: 0.0188    PSNR: 28.7985  Lr:0.0000
+2023-07-01 09:59:25 Train Epoch: 5 [24001/24303]        Loss: 0.0194    PSNR: 30.4318  Lr:0.0000
+Validation for epoch = 5
+(37965s) Epoch [5/5], Val_PSNR:28.34, Val_SSIM:0.9998
+
+========= Training Complete =========
+
+>>>>>>>>>>>>>>>>>>>>> Complete <<<<<<<<<<<<<<<<<<<<<<<<
+
