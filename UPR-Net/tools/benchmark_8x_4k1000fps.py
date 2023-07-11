@@ -97,6 +97,7 @@ if __name__ == "__main__":
     parser.add_argument('--nr_lvl_skipped', type=int, default=2,
             help='the number of skipped high-resolution pyramid levels '\
                     'of UPR-Net in testing')
+                    
     ## test base version of UPR-Net by default
     parser.add_argument('--model_size', type=str, default="base",
             help='model size, one of (base, large, LARGE)')

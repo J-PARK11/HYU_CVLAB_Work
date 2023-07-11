@@ -6,69 +6,7 @@ import torch.nn as nn
 
 from ..utils import correlation
 from ..models.softsplat import softsplat
-
-#**************************************************************************************************#
-# => Feature Pyramid
-#**************************************************************************************************#
-class FeatPyramid(nn.Module): 
-    """
-    Feature Encoder:
-    A 3-stage feature pyramid, which by default is shared by the motion
-    estimator and synthesis network.
-    ==> 4 Conv per 3 stages & Downsample at first layer of stage. (1 -> 1/4)
-    ### Channel Tracking ###
-    3 -> 16 -> 32 -> 64 ->
-    """
-    def __init__(self):
-        super(FeatPyramid, self).__init__()
-        self.conv_stage0 = nn.Sequential(
-                nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-        self.conv_stage1 = nn.Sequential(
-                nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3,
-                    stride=2, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-        self.conv_stage2 = nn.Sequential(
-                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3,
-                    stride=2, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1),
-                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3,
-                    stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-
-    def forward(self, img):
-        C0 = self.conv_stage0(img)
-        C1 = self.conv_stage1(C0)
-        C2 = self.conv_stage2(C1)
-        return [C0, C1, C2]
-
-
-
+from ..models.swin_transformer import swin_encoder
 
 #**************************************************************************************************#
 # => Motion Estimation
@@ -253,12 +191,12 @@ class SynthesisNetwork(nn.Module):
                 (last_i, warped_img0, warped_img1, i0, i1, flow_0t_1t), 1)
         s0 = self.encoder_conv(input_feat)
         s1 = self.encoder_down1(torch.cat((s0, warped_c0, warped_c1), 1))
-
+        
         warped_c0, warped_c1 = self.get_warped_representations(
                         bi_flow_pyr[1], c0_pyr[1], c1_pyr[1],
                         time_period=time_period)
         s2 = self.encoder_down2(torch.cat((s1, warped_c0, warped_c1), 1))
-
+        
         warped_c0, warped_c1 = self.get_warped_representations(
                         bi_flow_pyr[2], c0_pyr[2], c1_pyr[2],
                         time_period=time_period)
@@ -272,7 +210,7 @@ class SynthesisNetwork(nn.Module):
         refine = self.pred(x)
         refine_res = torch.sigmoid(refine[:, :3]) * 2 - 1
         refine_mask0 = torch.sigmoid(refine[:, 3:4])
-        refine_mask1 = torch.sigmoid(refine[:, 4:5])
+        refine_mask1 = torch.sigmoid(refine[:, 4:5])    
 
         merged_img = (warped_img0 * refine_mask0 * (1 - time_period) + \
                 warped_img1 * refine_mask1 * time_period)
@@ -300,7 +238,7 @@ class Model(nn.Module):
         super(Model, self).__init__()
         self.pyr_level = pyr_level
         self.nr_lvl_skipped = nr_lvl_skipped
-        self.feat_pyramid = FeatPyramid()
+        self.feat_pyramid = swin_encoder.SepSTSEncoder()
         self.motion_estimator = MotionEstimator()
         self.synthesis_network = SynthesisNetwork()
 
@@ -309,8 +247,9 @@ class Model(nn.Module):
             time_period=0.5, skip_me=False):
 
         # context feature extraction
-        feat0_pyr = self.feat_pyramid(img0)
-        feat1_pyr = self.feat_pyramid(img1)
+        # (B, C, D, H, W)
+        imgs = torch.concat([img0.unsqueeze(2), img1.unsqueeze(2)], dim=2)
+        feat0_pyr, feat1_pyr = self.feat_pyramid(imgs)
 
         # bi-directional flow estimation
         if not skip_me:
@@ -393,6 +332,7 @@ class Model(nn.Module):
                         (N, 64, H // (2 ** (level+2)), W // (2 ** (level+2)))
                         ).to(img0.device)
                 last_interp = None
+                
             # skip some levels for both motion estimation and frame synthesis
             elif level in skipped_levels[:-1]:
                     continue
@@ -401,7 +341,7 @@ class Model(nn.Module):
                 if len(skipped_levels) == pyr_level:
                     last_flow = torch.zeros(
                             (N, 4, H // 4, W // 4)).to(img0.device)
-                    last_interp = None
+                    last_interp = Noneextra_dict
                 else:
                     resize_factor = 2 ** len(skipped_levels)
                     last_flow = F.interpolate(
@@ -426,7 +366,6 @@ class Model(nn.Module):
                     img0_this_lvl, img1_this_lvl,
                     last_feat, last_flow, last_interp,
                     time_period, skip_me=skip_me)
-                    
             bi_flows.append(
                     F.interpolate(input=flow, scale_factor=4.0,
                         mode="bilinear", align_corners=False))

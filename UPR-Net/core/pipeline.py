@@ -14,10 +14,11 @@ from .loss import EPE, Ternary, LapLoss
 from core.models.upr_base import Model as base_model
 from core.models.upr_large import Model as large_model
 from core.models.upr_llarge import Model as LARGE_model
+from core.models.upr_att_base import Model as att_model
+from core.models.upr_raft_base import Model as raft_model
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 class Pipeline:
     def __init__(self,
@@ -117,18 +118,28 @@ class Pipeline:
         # instantiate model
         if model_size == "LARGE":
             self.model = LARGE_model(pyr_level, nr_lvl_skipped)
+            print('Large model selected')
         elif model_size == "large":
             self.model = large_model(pyr_level, nr_lvl_skipped)
-        else:
+            print('large model selected')
+        elif model_size == 'base':
             self.model = base_model(pyr_level, nr_lvl_skipped)
+            print('Base model selected')
+        elif model_size == 'att':
+            self.model = att_model(pyr_level, nr_lvl_skipped)
+            print('Attention based model selected')
+        elif model_size == 'raft':
+            self.model = raft_model(pyr_level, nr_lvl_skipped)
+            print('RAFT based model selected')
 
         # load pretrained model weight
         if load_pretrain:
             state_dict = load_pretrained_state_dict(
                     self.model, model_file)
             self.model.load_state_dict(state_dict)
+            print('Load Pretrained Model weight')
         else:
-            print("Train from random initialization.")
+            print('Train from random initialization')
 
 
     def save_optimizer_state(self, path, rank, step):
@@ -151,11 +162,14 @@ class Pipeline:
             time_period=0.5,
             pyr_level=3,
             nr_lvl_skipped=0):
-        interp_img, bi_flow, _ = self.model(img0, img1,
+        interp_img, bi_flow, warped_img0, warped_img1, _ = self.model(img0, img1,
                 time_period=time_period,
                 pyr_level=pyr_level,
                 nr_lvl_skipped=nr_lvl_skipped)
-        return interp_img, bi_flow
+        print(f'itp_img: {interp_img.shape}, {interp_img.mean()}, {interp_img.dtype}')
+        print(f'bi_flow: {bi_flow.shape}, {bi_flow.mean()}, {bi_flow.dtype}')
+
+        return interp_img, bi_flow, warped_img0, warped_img1
 
 
     def train_one_iter(self, img0, img1, gt, learning_rate=0,
@@ -164,8 +178,7 @@ class Pipeline:
             param_group['lr'] = learning_rate
         self.train()
 
-        interp_img, bi_flow, info_dict = self.model(img0, img1, time_period)
-
+        interp_img, bi_flow, warped_img0, warped_img1, info_dict = self.model(img0, img1, time_period)
         with torch.no_grad():
             loss_interp_l2_nograd = (((interp_img - gt) ** 2 + 1e-6) ** 0.5)\
                     .mean()
@@ -193,8 +206,6 @@ class Pipeline:
         extra_dict["bi_flow"] = bi_flow
 
         return interp_img, extra_dict
-
-
 
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

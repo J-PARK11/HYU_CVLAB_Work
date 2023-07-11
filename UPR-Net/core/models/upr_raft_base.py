@@ -1,3 +1,4 @@
+import os
 import torch
 import math
 import numpy
@@ -6,6 +7,7 @@ import torch.nn as nn
 
 from ..utils import correlation
 from ..models.softsplat import softsplat
+from ..models.raft import raft
 
 #**************************************************************************************************#
 # => Feature Pyramid
@@ -66,82 +68,6 @@ class FeatPyramid(nn.Module):
         C1 = self.conv_stage1(C0)
         C2 = self.conv_stage2(C1)
         return [C0, C1, C2]
-
-
-
-
-#**************************************************************************************************#
-# => Motion Estimation
-#**************************************************************************************************#
-class MotionEstimator(nn.Module):
-    """
-    Bi-directional optical flow estimator
-    1) construct partial cost volume with the CNN features from the stage 2 of
-    the feature pyramid;
-    2) estimate bi-directional flows, by feeding cost volume, CNN features for
-    both warped images, CNN feature and estimated flow from previous iteration.
-    
-    ### Channel Tracking ###
-    Input Channel = CorVolumne(4*2 + 1)**2 + Stage 2 of the FP(64 * 2) + Last Feat(64) + Last Flow(4) = 277
-    277 -> 160 -> 128 -> 112 -> 96 -> 64
-
-    ==> Softsplat Forward Warping -> Correlation Volume -> CNN Predictor
-    """
-    def __init__(self):
-        super(MotionEstimator, self).__init__()
-        
-        # (4*2 + 1) ** 2 + 64 * 2 + 64 + 4 = 277
-        self.conv_layer1 = nn.Sequential(
-                nn.Conv2d(in_channels=277, out_channels=160,
-                    kernel_size=1, stride=1, padding=0),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-        self.conv_layer2 = nn.Sequential(
-                nn.Conv2d(in_channels=160, out_channels=128,
-                    kernel_size=3, stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-        self.conv_layer3 = nn.Sequential(
-                nn.Conv2d(in_channels=128, out_channels=112,
-                    kernel_size=3, stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-        self.conv_layer4 = nn.Sequential(
-                nn.Conv2d(in_channels=112, out_channels=96,
-                    kernel_size=3, stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-        self.conv_layer5 = nn.Sequential(
-                nn.Conv2d(in_channels=96, out_channels=64,
-                    kernel_size=3, stride=1, padding=1),
-                nn.LeakyReLU(inplace=False, negative_slope=0.1))
-        self.conv_layer6 = nn.Sequential(
-                nn.Conv2d(in_channels=64, out_channels=4,
-                    kernel_size=3, stride=1, padding=1))
-
-
-    def forward(self, feat0, feat1, last_feat, last_flow):
-        corr_fn=correlation.FunctionCorrelation
-
-        # Softsplat Forward Warping
-        feat0 = softsplat.FunctionSoftsplat(
-                tenInput=feat0, tenFlow=last_flow[:, :2]*0.25*0.5,
-                tenMetric=None, strType='average')
-        feat1 = softsplat.FunctionSoftsplat(
-                tenInput=feat1, tenFlow=last_flow[:, 2:]*0.25*0.5,
-                tenMetric=None, strType='average')
-
-        # Correlation Volumne
-        volume = F.leaky_relu(
-                input=corr_fn(tenFirst=feat0, tenSecond=feat1),
-                negative_slope=0.1, inplace=False)
-
-        # CNN Predictor (6-layer)
-        input_feat = torch.cat([volume, feat0, feat1, last_feat, last_flow], 1)
-        feat = self.conv_layer1(input_feat)
-        feat = self.conv_layer2(feat)
-        feat = self.conv_layer3(feat)
-        feat = self.conv_layer4(feat)
-        feat = self.conv_layer5(feat)
-        flow = self.conv_layer6(feat)
-
-        return flow, feat
 
 
 
@@ -253,12 +179,12 @@ class SynthesisNetwork(nn.Module):
                 (last_i, warped_img0, warped_img1, i0, i1, flow_0t_1t), 1)
         s0 = self.encoder_conv(input_feat)
         s1 = self.encoder_down1(torch.cat((s0, warped_c0, warped_c1), 1))
-
+        
         warped_c0, warped_c1 = self.get_warped_representations(
                         bi_flow_pyr[1], c0_pyr[1], c1_pyr[1],
                         time_period=time_period)
         s2 = self.encoder_down2(torch.cat((s1, warped_c0, warped_c1), 1))
-
+        
         warped_c0, warped_c1 = self.get_warped_representations(
                         bi_flow_pyr[2], c0_pyr[2], c1_pyr[2],
                         time_period=time_period)
@@ -301,11 +227,11 @@ class Model(nn.Module):
         self.pyr_level = pyr_level
         self.nr_lvl_skipped = nr_lvl_skipped
         self.feat_pyramid = FeatPyramid()
-        self.motion_estimator = MotionEstimator()
+        self.motion_estimator = raft.raft()
         self.synthesis_network = SynthesisNetwork()
 
     def forward_one_lvl(self,
-            img0, img1, last_feat, last_flow, last_interp=None,
+            img0, img1, last_flow, last_interp=None,
             time_period=0.5, skip_me=False):
 
         # context feature extraction
@@ -314,12 +240,9 @@ class Model(nn.Module):
 
         # bi-directional flow estimation
         if not skip_me:
-            flow, feat = self.motion_estimator(
-                    feat0_pyr[-1], feat1_pyr[-1],
-                    last_feat, last_flow)
+            flow  = self.motion_estimator.pred(img0, img1)
         else:
             flow = last_flow
-            feat = last_feat
 
         # frame synthesis
         ## optical flow is estimated at 1/4 resolution
@@ -354,7 +277,7 @@ class Model(nn.Module):
         interp_img, extra_dict = self.synthesis_network(
                 last_interp, img0, img1, feat0_pyr, feat1_pyr, bi_flow_pyr,
                 time_period=time_period)
-        return flow, feat, interp_img, extra_dict
+        return flow, interp_img, extra_dict
 
     def forward(self, img0, img1, time_period,
             pyr_level=None, nr_lvl_skipped=None):
@@ -389,9 +312,6 @@ class Model(nn.Module):
                 last_flow = torch.zeros(
                         (N, 4, H // (2 ** (level+2)), W //(2 ** (level+2)))
                         ).to(img0.device)
-                last_feat = torch.zeros(
-                        (N, 64, H // (2 ** (level+2)), W // (2 ** (level+2)))
-                        ).to(img0.device)
                 last_interp = None
             # skip some levels for both motion estimation and frame synthesis
             elif level in skipped_levels[:-1]:
@@ -416,17 +336,14 @@ class Model(nn.Module):
             else:
                 last_flow = F.interpolate(input=flow, scale_factor=2.0,
                         mode="bilinear", align_corners=False) * 2
-                last_feat = F.interpolate(input=feat, scale_factor=2.0,
-                        mode="bilinear", align_corners=False) * 2
                 last_interp = F.interpolate(
                         input=interp_img, scale_factor=2.0,
                         mode="bilinear", align_corners=False)
 
-            flow, feat, interp_img, extra_dict = self.forward_one_lvl(
+            flow, interp_img, extra_dict = self.forward_one_lvl(
                     img0_this_lvl, img1_this_lvl,
-                    last_feat, last_flow, last_interp,
+                    last_flow, last_interp,
                     time_period, skip_me=skip_me)
-                    
             bi_flows.append(
                     F.interpolate(input=flow, scale_factor=4.0,
                         mode="bilinear", align_corners=False))
@@ -440,6 +357,7 @@ class Model(nn.Module):
 
         return interp_img, bi_flow, extra_dict['warped_img0'], extra_dict['warped_img1'], \
                 {"interp_imgs": interp_imgs, "bi_flows": bi_flows}
+
 
 
 if __name__ == "__main__":

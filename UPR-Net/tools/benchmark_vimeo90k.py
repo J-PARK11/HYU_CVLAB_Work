@@ -33,7 +33,7 @@ def evaluate(ppl, data_root, batch_size, nr_data_worker=1):
         img1 = data_gpu[:, 3:6]
         gt = data_gpu[:, 6:9]
         with torch.no_grad():
-            pred, _ = ppl.inference(img0, img1, pyr_level=PYR_LEVEL)
+            pred, bi_flow, warped_img0, warped_img1 = ppl.inference(img0, img1, pyr_level=PYR_LEVEL)
 
         batch_psnr = []
         batch_ssim = []
@@ -60,8 +60,6 @@ def evaluate(ppl, data_root, batch_size, nr_data_worker=1):
     ssim = np.array(ssim_list).mean()
     print('average ssim: {:.4f}'.format(ssim))
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='benchmark on vimeo90k')
 
@@ -69,7 +67,7 @@ if __name__ == "__main__":
     # => args for dataset and data loader
     parser.add_argument('--data_root', type=str, required=True,
             help='root dir of vimeo_triplet')
-    parser.add_argument('--batch_size', type=int, default=8,
+    parser.add_argument('--batch_size', type=int, default=32,
             help='batch size for data loader')
     parser.add_argument('--nr_data_worker', type=int, default=2,
             help='number of the worker for data loader')
@@ -78,26 +76,23 @@ if __name__ == "__main__":
     # => args for model
     parser.add_argument('--pyr_level', type=int, default=3,
             help='the number of pyramid levels of UPR-Net in testing')
-    ## test base version of UPR-Net by default
-    parser.add_argument('--model_size', type=str, default="base",
-            help='model size, one of (base, large, LARGE)')
-    parser.add_argument('--model_file', type=str,
-            default="./checkpoints/upr-base.pkl",
-            help='weight of UPR-Net')
 
-    ## test large version of UPR-Net
-    # parser.add_argument('--model_size', type=str, default="large",
-    #         help='model size, one of (base, large, LARGE)')
-    # parser.add_argument('--model_file', type=str,
-    #         default="./checkpoints/upr-large.pkl",
-    #         help='weight of UPR-Net')
+    # load version of UPR-Net
+    parser.add_argument('--model_size', type=str, default="base")
+    args = parser.parse_args()
 
-    ## test LARGE version of UPR-Net
-    # parser.add_argument('--model_size', type=str, default="LARGE",
-    #         help='model size, one of (base, large, LARGE)')
-    # parser.add_argument('--model_file', type=str,
-    #         default="./checkpoints/upr-llarge.pkl",
-    #         help='weight of UPR-Net')
+    if args.model_size == 'base':
+        model_file = "./checkpoints/upr-base.pkl"
+    elif args.model_size == 'large':
+        model_file = "./checkpoints/upr-large.pkl"
+    elif args.model_size == 'Large':
+        model_file = "./checkpoints/upr-llarge.pkl"
+    elif args.model_size == 'att':
+        model_file = "./checkpoints/upr-att.pkl"
+    elif args.model_size == 'raft':
+        model_file = "./checkpoints/upr-raft.pkl"
+    else:
+        ValueError("No mactched Model Size!")
 
 
     #**********************************************************#
@@ -112,7 +107,6 @@ if __name__ == "__main__":
 
     #**********************************************************#
     # => init the pipeline and start to benchmark
-    args = parser.parse_args()
     print('\n>>>>>>>> UPR-Net benchmark_vimeo90k.py <<<<<<<<')
     print('\n>>>>>>>>>>>>>>>>>> Initialize <<<<<<<<<<<<<<<<<<')
     print(f"Config: {args}")
@@ -120,7 +114,7 @@ if __name__ == "__main__":
     model_cfg_dict = dict(
             load_pretrain = True,
             model_size = args.model_size,
-            model_file = args.model_file
+            model_file = model_file
             )
     ppl = Pipeline(model_cfg_dict)
 

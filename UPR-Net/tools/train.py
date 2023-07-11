@@ -27,7 +27,7 @@ from core.dataset import VimeoDataset
 
 warnings.filterwarnings("ignore")
 
-
+# Scheduler: 2e-5 -> 1e-6, 전체 스탭 대비 선형 및 코사인 배율.
 def get_learning_rate(total_step, cur_step, init_lr, min_lr=1e-6):
     if cur_step < 2000:
         mul = cur_step / 2000.
@@ -37,7 +37,7 @@ def get_learning_rate(total_step, cur_step, init_lr, min_lr=1e-6):
                 * 0.5 + 0.5
         return  (init_lr - min_lr) * mul + min_lr
 
-
+# Flow to RGB 
 def flow2rgb(flow_map_np):
     h, w, _ = flow_map_np.shape
     rgb_map = np.ones((h, w, 3)).astype(np.float32)
@@ -101,35 +101,41 @@ def train(ppl, dataset_cfg_dict, optimizer_cfg_dict):
     step_per_epoch = len(train_data)
     epoch_counter = 0
     last_epoch = False
-
+    
+    # Step 진행.
     while step <  total_step+1:
         if step + step_per_epoch >  total_step:
             last_epoch = True
 
         epoch_counter += 1
         sampler.set_epoch(epoch_counter)
-
+        
         for data in train_data:
             data_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             data_gpu = data.to(
                     DEVICE, dtype=torch.float, non_blocking=True) / 255.
-
+            
+            # Img0 - Img1 - GT
             img0 = data_gpu[:, :3]
             img1 = data_gpu[:, 3:6]
             gt = data_gpu[:, 6:9]
             learning_rate = get_learning_rate(total_step, step, init_lr, min_lr)
+            
+            # Train Inference One iter
             pred, extra_dict = ppl.train_one_iter(
                     img0, img1, gt,
                     learning_rate=learning_rate,
                     loss_type=loss_type)
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
-
+            
+            # Tensorboard 기록.
             if step % 100 == 1 and LOCAL_RANK == 0:
                 writer.add_scalar(
                         '1-loss_interp_l2', extra_dict["loss_interp_l2"] , step)
                 writer.add_scalar('2-learning_rate', learning_rate, step)
+
             if step % 1000 == 1 and LOCAL_RANK == 0:
                 gt = (gt.permute(0, 2, 3, 1).detach().cpu().numpy() * 255)\
                         .astype('uint8')
@@ -152,6 +158,8 @@ def train(ppl, dataset_cfg_dict, optimizer_cfg_dict):
                             flow2rgb(bi_flow[i][:, :, :2]),
                             step, dataformats='HWC')
                 writer.flush()
+            
+            # Train Log 로깅.
             if LOCAL_RANK == 0:
                 print("{} => train step: {}/{}; time: {:.2f}+{:.2f}; "\
                         "loss_interp_l2: {:.4e}".format(
@@ -165,6 +173,7 @@ def train(ppl, dataset_cfg_dict, optimizer_cfg_dict):
                 ppl.save_optimizer_state(THIS_EXP_LOG_DIR, LOCAL_RANK, step)
                 logger.info("{} => val step: {}; "\
                         "psnr: {:.4f}".format(EXP_NAME, step, psnr))
+                
                 if step % (save_interval * 50) == 0:
                     ppl.save_model(model_log_dir, LOCAL_RANK, save_step=step)
                     ppl.save_optimizer_state(THIS_EXP_LOG_DIR, LOCAL_RANK, step)
@@ -181,6 +190,7 @@ def evaluate(ppl, step, val_data, writer_val, is_write=True):
     start_time_stamp = time.time()
     time_stamp = start_time_stamp
     nr_val = val_data.__len__()
+
     for i, data in enumerate(val_data):
         data_time_interval = time.time() - time_stamp
         time_stamp = time.time()
@@ -191,8 +201,10 @@ def evaluate(ppl, step, val_data, writer_val, is_write=True):
         img0 = data_gpu[:, :3]
         img1 = data_gpu[:, 3:6]
         gt = data_gpu[:, 6:9]
+
         with torch.no_grad():
-            pred, extra_dict = ppl.inference(img0, img1)
+            pred, extra_dict, warped_img0, warped_img1 = ppl.inference(img0, img1)
+
         for j in range(gt.shape[0]):
             this_gt = gt[j]
             this_pred = pred[j]
@@ -202,6 +214,7 @@ def evaluate(ppl, step, val_data, writer_val, is_write=True):
             psnr_list.append(psnr)
         eval_time_interval = time.time() - time_stamp
         time_stamp = time.time()
+
         if LOCAL_RANK == 0:
             print('{} => val step: {}: {}/{}; time: {:.2f}+{:.2f}'\
                     .format(EXP_NAME, step, i, nr_val,\
@@ -247,11 +260,13 @@ def init_exp_env():
         train_log_dir_link = os.path.join(THIS_CODEBASE_DIR, "train-log")
         this_exp_model_dir = os.path.join(THIS_EXP_LOG_DIR, "trained-models")
         this_exp_tf_dir = os.path.join(THIS_EXP_LOG_DIR, "tensorboard")
+        
         if not os.path.exists(TRAIN_LOG_ROOT):
             os.makedirs(TRAIN_LOG_ROOT)
         if not os.path.exists(train_log_dir_link):
             cmd = "ln -s %s %s" % (TRAIN_LOG_ROOT, train_log_dir_link)
             os.system(cmd)
+
         os.makedirs(THIS_EXP_LOG_DIR)
         os.makedirs(this_exp_model_dir)
         os.makedirs(this_exp_tf_dir)
@@ -286,7 +301,6 @@ if __name__ == "__main__":
 
     #**********************************************************#
     # => args for distributed training
-    parser.add_argument('--local_rank', default=0, type=int, help='local rank')
     parser.add_argument('--world_size', default=1, type=int, help='world size')
 
     #**********************************************************#
@@ -295,7 +309,7 @@ if __name__ == "__main__":
             help='root dir of vimeo_triplet')
     parser.add_argument('--batch_size', type=int, default=8,
             help='batch size for data loader')
-    parser.add_argument('--nr_data_worker', type=int, default=2,
+    parser.add_argument('--nr_data_worker', type=int, default=4,
             help='number of the worker for data loader')
     parser.add_argument('--crop_h', type=int, default=256,
             help='height of cropped patch')
@@ -305,7 +319,7 @@ if __name__ == "__main__":
     #**********************************************************#
     # => args for model
     parser.add_argument('--model_size', type=str, default="base",
-            help='model size, one of (base, large, LARGE)')
+            help='model size, one of (att, raft, base, large, LARGE)')
     parser.add_argument('--pyr_level', type=int, default=3,
             help='the number of pyramid levels of UPR-Net during training')
     # parser.add_argument('--nr_lvl_skipped', type=int, default=0,
@@ -319,7 +333,7 @@ if __name__ == "__main__":
     # => args for optimizer
     parser.add_argument('--init_lr', type=float, default=2e-4,
             help='init learning rate')
-    parser.add_argument('--min_lr', type=float, default=2e-5,
+    parser.add_argument('--min_lr', type=float, default=2e-6,
             help='min learning rate, till the end of training')
     parser.add_argument('--weight_decay', type=float, default=1e-4,
             help='wegith decay')
@@ -358,13 +372,12 @@ if __name__ == "__main__":
             data_root=args.data_root
             )
 
-
-    #**********************************************************#
+    # ********************************************************** #
     # => parse args and init the training environment
     # global variable
-    EXP_NAME = args.exp_name
+    EXP_NAME = 'upr_' + args.model_size
     TRAIN_LOG_ROOT = args.train_log_root
-    LOCAL_RANK = args.local_rank
+    LOCAL_RANK = int(os.environ['LOCAL_RANK'])
     WORLD_SIZE = args.world_size
     DEVICE = torch.device("cuda", LOCAL_RANK)
     THIS_CODEBASE_DIR = os.path.split(os.path.split(__file__)[0])[0]
@@ -381,11 +394,18 @@ if __name__ == "__main__":
 
     # init the exp environment
     init_exp_env()
+    
+    print('\n>>>>>>>>>>>>>>> UPR-Net Train.py <<<<<<<<<<<<<<<')
+    print('\n>>>>>>>>>>>>>>>>>> Initialize <<<<<<<<<<<<<<<<<<')
+    print(f"Config: {args}")
 
     #**********************************************************#
     # => init the pipeline and train the pipeline
     ppl = Pipeline(
             model_cfg_dict, optimizer_cfg_dict,
             LOCAL_RANK, training=True, resume=RESUME)
+    
+    print('\n>>>>>>>>>>>>>>>>>>>> Train <<<<<<<<<<<<<<<<<<<<')
     logger.info("start the training task: %s" % EXP_NAME)
     train(ppl, dataset_cfg_dict, optimizer_cfg_dict)
+    print('\n>>>>>>>>>>>>>>>>>>> Complete <<<<<<<<<<<<<<<<<<<')
