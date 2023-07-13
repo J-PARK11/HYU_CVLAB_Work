@@ -1,16 +1,22 @@
 # cmd
 
 ## Play with demo
-python -m demo.interp_imgs --frame0 demo/images/beanbags0.png --frame1 demo/images/beanbags1.png --time_period 0.5 --model_size raft
+python -m demo.interp_imgs --frame0 demo/images/ambush50.png --frame1 demo/images/ambush51.png --time_period 0.5 --model_size base
 
 ## Training : 12시간에 100000 step by 32 batch, 800000 하려면 4 days
 torchrun -m tools.train --data_root /home/work/VFIT/data/vimeo_triplet --train_log_root train-log --batch_size 32 --nr_data_worker 8 --world_size 1 --steps 0.6e6 --model_size raft
 
 ## Evaluation
-python -m tools.benchmark_vimeo90k --data_root /home/work/VFIT/data/vimeo_triplet/
-python -m tools.benchmark_ucf101 --data_root /home/work/VFIT/data/ucf101/
-python -m tools.benchmark_snufilm --data_root /home/work/VFIT/data/SNU-FILM/
-python -m tools.benchmark_8x_4k1000fps --test_data_path /home/work/VFIT/data/4k1000fps/test
+python -m tools.benchmark_vimeo90k --data_root /home/work/VFIT/data/vimeo_triplet/ --model_size raft
+python -m tools.benchmark_adobe240 --data_root /home/work/VFIT/data/adobe_frame/test/ --model_size base
+python -m tools.benchmark_ucf101 --data_root /home/work/VFIT/data/ucf101/ --model_size base
+python -m tools.benchmark_sintel --data_root /home/work/VFIT/data/sintel/test/final/ --model_size base
 
 ## Estimate Runtime
 python -m tools.runtime
+
+
+
+
+
+

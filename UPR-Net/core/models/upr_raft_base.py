@@ -231,7 +231,7 @@ class Model(nn.Module):
         self.synthesis_network = SynthesisNetwork()
 
     def forward_one_lvl(self,
-            img0, img1, last_flow, last_interp=None,
+            img0, img1, flow_this_lvl, last_interp=None,
             time_period=0.5, skip_me=False):
 
         # context feature extraction
@@ -239,10 +239,7 @@ class Model(nn.Module):
         feat1_pyr = self.feat_pyramid(img1)
 
         # bi-directional flow estimation
-        if not skip_me:
-            flow  = self.motion_estimator.pred(img0, img1)
-        else:
-            flow = last_flow
+        flow = flow_this_lvl
 
         # frame synthesis
         ## optical flow is estimated at 1/4 resolution
@@ -277,82 +274,94 @@ class Model(nn.Module):
         interp_img, extra_dict = self.synthesis_network(
                 last_interp, img0, img1, feat0_pyr, feat1_pyr, bi_flow_pyr,
                 time_period=time_period)
-        return flow, interp_img, extra_dict
+        return interp_img, extra_dict
 
     def forward(self, img0, img1, time_period,
             pyr_level=None, nr_lvl_skipped=None):
-
+        
         if pyr_level is None: pyr_level = self.pyr_level
         if nr_lvl_skipped is None: nr_lvl_skipped = self.nr_lvl_skipped
         N, _, H, W = img0.shape
+
         bi_flows = []
         interp_imgs = []
         skipped_levels = [] if nr_lvl_skipped == 0 else\
                 list(range(pyr_level))[::-1][-nr_lvl_skipped:]
+        
+        # Original Flow Estimation: RAFT 추론은 여기서 끝남.
+        orig_flow  = self.motion_estimator.pred(img0, img1) # 1/4
 
         # The original input resolution corresponds to level 0.
-        for level in list(range(pyr_level))[::-1]:
+        for level in list(range(pyr_level))[::-1]:  # [0, 1, 2]
             if level != 0:
-                scale_factor = 1 / 2 ** level
+                scale_factor = 1 / 2 ** level       # [1, 1/2, 1/4]
                 img0_this_lvl = F.interpolate(
                         input=img0, scale_factor=scale_factor,
                         mode="bilinear", align_corners=False)
                 img1_this_lvl = F.interpolate(
                         input=img1, scale_factor=scale_factor,
                         mode="bilinear", align_corners=False)
+                flow_this_lvl = F.interpolate(
+                    input=orig_flow, scale_factor=scale_factor,
+                        mode="bilinear", align_corners=False)
             else:
                 img0_this_lvl = img0
                 img1_this_lvl = img1
+                flow_this_lvl = orig_flow
 
             # skip motion estimation, directly use up-sampled optical flow
             skip_me = False
 
             # the lowest-resolution pyramid level
             if level == pyr_level - 1:
-                last_flow = torch.zeros(
-                        (N, 4, H // (2 ** (level+2)), W //(2 ** (level+2)))
-                        ).to(img0.device)
+                last_flow = F.interpolate(
+                    input=flow_this_lvl, scale_factor=1/(2**(level)),
+                        mode="bilinear", align_corners=False)
                 last_interp = None
+            
             # skip some levels for both motion estimation and frame synthesis
             elif level in skipped_levels[:-1]:
                     continue
+
             # last level (original input resolution), only skip motion estimation
             elif (level == 0) and len(skipped_levels) > 0:
                 if len(skipped_levels) == pyr_level:
-                    last_flow = torch.zeros(
-                            (N, 4, H // 4, W // 4)).to(img0.device)
+                    last_flow = flow_this_lvl
                     last_interp = None
                 else:
                     resize_factor = 2 ** len(skipped_levels)
                     last_flow = F.interpolate(
-                            input=flow, scale_factor=resize_factor,
+                            input=flow_this_lvl, scale_factor=resize_factor,
                             mode="bilinear", align_corners=False) * resize_factor
                     last_interp = F.interpolate(
                             input=interp_img, scale_factor=resize_factor,
                             mode="bilinear", align_corners=False)
                 skip_me = True
+            
             # last level (original input resolution), motion estimation + frame
             # synthesis
             else:
-                last_flow = F.interpolate(input=flow, scale_factor=2.0,
+                last_flow = F.interpolate(input=flow_this_lvl, scale_factor=2.0,
                         mode="bilinear", align_corners=False) * 2
                 last_interp = F.interpolate(
                         input=interp_img, scale_factor=2.0,
                         mode="bilinear", align_corners=False)
 
-            flow, interp_img, extra_dict = self.forward_one_lvl(
+            # 피라미드 레벨 하나 당 수행하는 Forward 부분.
+            interp_img, extra_dict = self.forward_one_lvl(
                     img0_this_lvl, img1_this_lvl,
-                    last_flow, last_interp,
+                    flow_this_lvl, last_interp,
                     time_period, skip_me=skip_me)
+
             bi_flows.append(
-                    F.interpolate(input=flow, scale_factor=4.0,
+                    F.interpolate(input=flow_this_lvl, scale_factor=4.0,
                         mode="bilinear", align_corners=False))
             interp_imgs.append(interp_img)
 
         # directly up-sample estimated flow to full resolution with bi-linear
         # interpolation
         bi_flow = F.interpolate(
-                input=flow, scale_factor=4.0,
+                input=flow_this_lvl, scale_factor=4.0,
                 mode="bilinear", align_corners=False)
 
         return interp_img, bi_flow, extra_dict['warped_img0'], extra_dict['warped_img1'], \

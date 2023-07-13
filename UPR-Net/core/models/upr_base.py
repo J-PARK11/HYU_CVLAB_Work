@@ -118,7 +118,7 @@ class MotionEstimator(nn.Module):
 
     def forward(self, feat0, feat1, last_feat, last_flow):
         corr_fn=correlation.FunctionCorrelation
-
+        
         # Softsplat Forward Warping
         feat0 = softsplat.FunctionSoftsplat(
                 tenInput=feat0, tenFlow=last_flow[:, :2]*0.25*0.5,
@@ -287,6 +287,11 @@ class SynthesisNetwork(nn.Module):
         extra_dict["warped_img0"] = warped_img0
         extra_dict["warped_img1"] = warped_img1
         extra_dict["merged_img"] = merged_img
+        
+        # For visualization
+        extra_dict["refine_mask0"] = refine_mask0
+        extra_dict["refine_mask1"] = refine_mask1
+        extra_dict["refine_res"] = refine_res
 
         return interp_img, extra_dict
 
@@ -439,7 +444,7 @@ class Model(nn.Module):
                 mode="bilinear", align_corners=False)
 
         return interp_img, bi_flow, extra_dict['warped_img0'], extra_dict['warped_img1'], \
-                {"interp_imgs": interp_imgs, "bi_flows": bi_flows}
+                {"interp_imgs": interp_imgs, "bi_flows": bi_flows, "refine_mask0": extra_dict['refine_mask0'], "refine_mask1": extra_dict['refine_mask1'], "refine_res": extra_dict['refine_res']}
 
 
 if __name__ == "__main__":

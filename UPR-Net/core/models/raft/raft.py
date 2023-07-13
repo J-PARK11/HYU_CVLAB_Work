@@ -39,7 +39,7 @@ class raft:
             self.f10 = self.model(img1, img0)[-1]       # [B,2,H,W]
 
             self.bi_flow = torch.concat([self.f01, self.f10], dim=1)
-            self.bi_flow = torch.nn.functional.interpolate(self.bi_flow, scale_factor=0.25, mode="bilinear", align_corners=False)
+            # self.bi_flow = torch.nn.functional.interpolate(self.bi_flow, scale_factor=0.25, mode="bilinear", align_corners=False)
   
         return self.bi_flow
     

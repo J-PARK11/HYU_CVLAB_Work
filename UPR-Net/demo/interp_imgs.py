@@ -34,15 +34,16 @@ def init_exp_env():
         torch.backends.cudnn.enabled = True
         torch.backends.cudnn.demo = True
 
-
 def interp_imgs(ppl, ori_img0, ori_img1, model_size):
     img0 = (torch.tensor(ori_img0.transpose(2, 0, 1)).to(DEVICE) / 255.).unsqueeze(0)
     img1 = (torch.tensor(ori_img1.transpose(2, 0, 1)).to(DEVICE) / 255.).unsqueeze(0)
     
     # Only RAFT
     if model_size == 'raft':
-        if (img0.shape[-1] > 1000) or (img0.shape[-1] % 8 != 0) or (img0.shape[-2] % 8 != 0):
-            crop_size = [512,896]
+        if (img0.shape[-1] % 8 != 0) or (img0.shape[-2] % 8 != 0):
+            h = (img0.shape[-2] // 8) * 8
+            w = (img0.shape[-1] // 8) * 8
+            crop_size = [h,w]
             img0 = VF.resize(img0, size=crop_size, antialias=False)
             img1 = VF.resize(img1, size=crop_size, antialias=False)
     
@@ -63,7 +64,7 @@ def interp_imgs(ppl, ori_img0, ori_img1, model_size):
     print("Initialization is OK! Begin to interp images")
     
     print('\n>>>>>>>>>>>>>>> Model Inference <<<<<<<<<<<<<<<')
-    interp_img, bi_flow, warped_img0, warped_img1 = ppl.inference(img0, img1,
+    interp_img, bi_flow, warped_img0, warped_img1, extra_dict = ppl.inference(img0, img1,
             time_period=TIME_PERIOID,
             pyr_level=PYR_LEVEL)
 
@@ -76,11 +77,19 @@ def interp_imgs(ppl, ori_img0, ori_img1, model_size):
     warped_img0 = warped_img0[:, :, :h, :w]
     warped_img1 = warped_img1[:, :, :h, :w]
     
+    refine_mask0 = extra_dict['refine_mask0']
+    refine_mask1 = extra_dict['refine_mask1']
+    refine_res = extra_dict['refine_res']
+    
     overlay_input = (ori_img0 * 0.5 + ori_img1 * 0.5).astype("uint8")
     interp_img = (interp_img[0] * 255).byte().cpu().numpy().transpose(1, 2, 0)
     bi_flow = bi_flow[0].cpu().numpy().transpose(1, 2, 0)
     warped_img0 = (warped_img0[0] * 255).byte().cpu().numpy().transpose(1, 2, 0)
     warped_img1 = (warped_img1[0] * 255).byte().cpu().numpy().transpose(1, 2, 0)
+
+    refine_mask0 = (refine_mask0[0] * 255).byte().cpu().numpy().transpose(1, 2, 0)
+    refine_mask1 = (refine_mask1[0] * 255).byte().cpu().numpy().transpose(1, 2, 0)
+    refine_res = (refine_res[0] * 255).byte().cpu().numpy().transpose(1, 2, 0)
 
     flow01 = bi_flow[:, :, :2]
     flow10 = bi_flow[:, :, 2:]
@@ -95,6 +104,9 @@ def interp_imgs(ppl, ori_img0, ori_img1, model_size):
     cv2.imwrite(os.path.join(SAVE_DIR, '4-warped-img1.png'), warped_img1)
     cv2.imwrite(os.path.join(SAVE_DIR, '5-interp-img.png'), interp_img)
     cv2.imwrite(os.path.join(SAVE_DIR, '6-bi-flow.png'), bi_flow)
+    cv2.imwrite(os.path.join(SAVE_DIR, '7-refine_mask0.png'), refine_mask0)
+    cv2.imwrite(os.path.join(SAVE_DIR, '8-refine_mask1.png'), refine_mask1)
+    cv2.imwrite(os.path.join(SAVE_DIR, '9-refine_res.png'), refine_res)
     print("Interpolation is completed! Results in %s" % (SAVE_DIR))
     print('\n>>>>>>>>>>>>>>>>>> Complete <<<<<<<<<<<<<<<<<<')
 

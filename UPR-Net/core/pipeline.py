@@ -15,7 +15,7 @@ from core.models.upr_base import Model as base_model
 from core.models.upr_large import Model as large_model
 from core.models.upr_llarge import Model as LARGE_model
 from core.models.upr_att_base import Model as att_model
-from core.models.upr_raft_base import Model as raft_model
+from core.models.upr_raft_base_extra import Model as raft_model
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -162,14 +162,12 @@ class Pipeline:
             time_period=0.5,
             pyr_level=3,
             nr_lvl_skipped=0):
-        interp_img, bi_flow, warped_img0, warped_img1, _ = self.model(img0, img1,
+        interp_img, bi_flow, warped_img0, warped_img1, extra_dict = self.model(img0, img1,
                 time_period=time_period,
                 pyr_level=pyr_level,
                 nr_lvl_skipped=nr_lvl_skipped)
-        print(f'itp_img: {interp_img.shape}, {interp_img.mean()}, {interp_img.dtype}')
-        print(f'bi_flow: {bi_flow.shape}, {bi_flow.mean()}, {bi_flow.dtype}')
 
-        return interp_img, bi_flow, warped_img0, warped_img1
+        return interp_img, bi_flow, warped_img0, warped_img1, extra_dict
 
 
     def train_one_iter(self, img0, img1, gt, learning_rate=0,
@@ -178,7 +176,7 @@ class Pipeline:
             param_group['lr'] = learning_rate
         self.train()
 
-        interp_img, bi_flow, warped_img0, warped_img1, info_dict = self.model(img0, img1, time_period)
+        interp_img, bi_flow, warped_img0, warped_img1, extra_dict = self.model(img0, img1, time_period)
         with torch.no_grad():
             loss_interp_l2_nograd = (((interp_img - gt) ** 2 + 1e-6) ** 0.5)\
                     .mean()

@@ -1,4 +1,7 @@
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
 import math
 import numpy as np
 import argparse
@@ -30,7 +33,7 @@ def evaluate(ppl, data_root, batch_size, nr_data_worker=1):
         img1 = data_gpu[:, 3:6]
         gt = data_gpu[:, 6:9]
         with torch.no_grad():
-            pred, _ = ppl.inference(img0, img1, pyr_level=PYR_LEVEL)
+            pred, bi_flow, warped_img0, warped_img1 = ppl.inference(img0, img1, pyr_level=PYR_LEVEL)
 
         batch_psnr = []
         batch_ssim = []
@@ -65,12 +68,16 @@ if __name__ == "__main__":
     # => args for dataset and data loader
     parser.add_argument('--data_root', type=str, required=True,
             help='root dir of ucf101 dataset')
-    parser.add_argument('--batch_size', type=int, default=8,
+    parser.add_argument('--batch_size', type=int, default=32,
             help='batch size for data loader')
     parser.add_argument('--nr_data_worker', type=int, default=2,
             help='number of the worker for data loader')
 
     #**********************************************************#
+    # => args for model
+    parser.add_argument('--pyr_level', type=int, default=3,
+            help='the number of pyramid levels of UPR-Net in testing')
+
     # load version of UPR-Net
     parser.add_argument('--model_size', type=str, default="base")
     args = parser.parse_args()
@@ -100,10 +107,14 @@ if __name__ == "__main__":
 
     #**********************************************************#
     # => init the pipeline and start to benchmark
+    print('\n>>>>>>>> UPR-Net benchmark_ucf101.py <<<<<<<<')
+    print('\n>>>>>>>>>>>>>>>>>> Initialize <<<<<<<<<<<<<<<<<<')
+    print(f"Config: {args}")
+
     model_cfg_dict = dict(
             load_pretrain = True,
             model_size = args.model_size,
-            model_file = args.model_file
+            model_file = model_file
             )
     ppl = Pipeline(model_cfg_dict)
 
@@ -111,4 +122,6 @@ if __name__ == "__main__":
     PYR_LEVEL = args.pyr_level
 
     print("benchmarking on UCF101...")
+    print('\n>>>>>>>>>>>>>>>>>> Evaluation <<<<<<<<<<<<<<<<<<')
     evaluate(ppl, args.data_root, args.batch_size, args.nr_data_worker)
+    print('\n>>>>>>>>>>>>>>>>>> Complete <<<<<<<<<<<<<<<<<<')

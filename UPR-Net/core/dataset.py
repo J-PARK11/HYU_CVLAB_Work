@@ -6,11 +6,10 @@ import numpy as np
 import random
 from glob import glob
 from PIL import ImageEnhance, Image
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 cv2.setNumThreads(0)
-
-
 
 class SnuFilm(Dataset):
     def __init__(self, data_root, data_type="extreme"):
@@ -22,7 +21,6 @@ class SnuFilm(Dataset):
 
     def __len__(self):
         return len(self.meta_data)
-
 
     def load_data(self):
         if self.data_type == "easy":
@@ -54,7 +52,6 @@ class SnuFilm(Dataset):
 
         return img0, gt, img1
 
-
     def __getitem__(self, index):
         img0, gt, img1 = self.getimg(index)
         img0 = torch.from_numpy(img0.copy()).permute(2, 0, 1)
@@ -63,7 +60,7 @@ class SnuFilm(Dataset):
         return torch.cat((img0, img1, gt), 0)
 
 
-class UCF101(Dataset):
+class UCF101(Dataset):  # (225, 225, 3)
     def __init__(self, data_root):
         self.data_root = data_root
         self.load_data()
@@ -80,9 +77,9 @@ class UCF101(Dataset):
 
     def getimg(self, index):
         imgpath = self.meta_data[index]
-        imgpaths = [os.path.join(imgpath, 'frame_00.png'),
-                os.path.join(imgpath, 'frame_01_gt.png'),
-                os.path.join(imgpath, 'frame_02.png')]
+        imgpaths = [os.path.join(imgpath, 'frame1.png'),
+                os.path.join(imgpath, 'framet.png'),
+                os.path.join(imgpath, 'frame2.png')]
 
         # Load images
         img0 = cv2.imread(imgpaths[0])
@@ -93,11 +90,83 @@ class UCF101(Dataset):
 
     def __getitem__(self, index):
         img0, gt, img1 = self.getimg(index)
-        img0 = torch.from_numpy(img0.copy()).permute(2, 0, 1)
-        img1 = torch.from_numpy(img1.copy()).permute(2, 0, 1)
-        gt = torch.from_numpy(gt.copy()).permute(2, 0, 1)
+        crop_size = (256, 256)
+        img0 = F.interpolate(torch.from_numpy(img0.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        img1 = F.interpolate(torch.from_numpy(img1.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        gt = F.interpolate(torch.from_numpy(gt.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
         return torch.cat((img0, img1, gt), 0)
 
+
+class adobe240(Dataset):    # [3, 360, 640]
+    def __init__(self, data_root):
+        self.data_root = data_root
+        self.load_data()
+
+
+    def __len__(self):
+        return len(self.meta_data)
+
+
+    def load_data(self):
+        triplet_dirs = glob(os.path.join(self.data_root, "*"))
+        self.meta_data = triplet_dirs
+
+
+    def getimg(self, index):
+        imgpath = self.meta_data[index]
+        imgpaths = sorted([os.path.join(imgpath, img_name) for img_name in os.listdir(imgpath)])[:3]
+
+        # Load images
+        img0 = cv2.imread(imgpaths[0])
+        gt = cv2.imread(imgpaths[1])
+        img1 = cv2.imread(imgpaths[2])
+        return img0, gt, img1
+
+
+    def __getitem__(self, index):
+        img0, gt, img1 = self.getimg(index)        
+        crop_size = (320, 640)
+        img0 = F.interpolate(torch.from_numpy(img0.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        img1 = F.interpolate(torch.from_numpy(img1.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        gt = F.interpolate(torch.from_numpy(gt.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        return torch.cat((img0, img1, gt), 0)
+
+
+class sintel(Dataset):  # (436, 1024, 3)
+    def __init__(self, data_root):
+        self.data_root = data_root
+        self.load_data()
+
+
+    def __len__(self):
+        return len(self.meta_data)
+
+
+    def load_data(self):
+        triplet_dirs = glob(os.path.join(self.data_root, "*"))
+        self.meta_data = triplet_dirs
+
+
+    def getimg(self, index):
+        imgpath = self.meta_data[index]
+        imgpaths = [os.path.join(imgpath, 'frame_0001.png'),
+                os.path.join(imgpath, 'frame_0002.png'),
+                os.path.join(imgpath, 'frame_0003.png')]
+
+        # Load images
+        img0 = cv2.imread(imgpaths[0])
+        gt = cv2.imread(imgpaths[1])
+        img1 = cv2.imread(imgpaths[2])
+        return img0, gt, img1
+
+
+    def __getitem__(self, index):
+        img0, gt, img1 = self.getimg(index)
+        crop_size = (448, 1024)
+        img0 = F.interpolate(torch.from_numpy(img0.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        img1 = F.interpolate(torch.from_numpy(img1.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        gt = F.interpolate(torch.from_numpy(gt.copy()).permute(2, 0, 1).unsqueeze(0), size=crop_size, mode='nearest').squeeze()
+        return torch.cat((img0, img1, gt), 0)
 
 
 class VimeoSeptupletDataset(Dataset):
@@ -431,9 +500,6 @@ class VimeoDatasetWithFlow(Dataset):
         gt = torch.from_numpy(gt.copy()).permute(2, 0, 1)
 
         return torch.cat((img0, img1, gt), 0), flow_gt
-
-
-
 
 
 class X_Test(Dataset):
