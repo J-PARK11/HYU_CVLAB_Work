@@ -14,8 +14,11 @@ from .loss import EPE, Ternary, LapLoss
 from core.models.upr_base import Model as base_model
 from core.models.upr_large import Model as large_model
 from core.models.upr_llarge import Model as LARGE_model
+
 from core.models.upr_att_base import Model as att_model
 from core.models.upr_raft_base_extra import Model as raft_model
+from core.models.upr_depth_base import Model as depth_model
+from core.models.upr_softmax_base import Model as softmax_model
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -131,6 +134,12 @@ class Pipeline:
         elif model_size == 'raft':
             self.model = raft_model(pyr_level, nr_lvl_skipped)
             print('RAFT based model selected')
+        elif model_size == 'depth':
+            self.model = depth_model(pyr_level, nr_lvl_skipped)
+            print('Depth based model selected')
+        elif model_size == 'softmax':
+            self.model = softmax_model(pyr_level, nr_lvl_skipped)
+            print('Softmax Mask model selected')
 
         # load pretrained model weight
         if load_pretrain:
@@ -193,7 +202,6 @@ class Pipeline:
             loss_G = loss_interp_l2 + loss_ter
         else:
             ValueError("unsupported loss type!")
-
 
         self.optimG.zero_grad()
         loss_G.backward()

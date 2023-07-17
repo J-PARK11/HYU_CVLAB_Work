@@ -203,7 +203,7 @@ def evaluate(ppl, step, val_data, writer_val, is_write=True):
         gt = data_gpu[:, 6:9]
 
         with torch.no_grad():
-            pred, extra_dict, warped_img0, warped_img1 = ppl.inference(img0, img1)
+            pred, extra_dict, warped_img0, warped_img1, _ = ppl.inference(img0, img1)
 
         for j in range(gt.shape[0]):
             this_gt = gt[j]
@@ -285,8 +285,6 @@ def init_exp_env():
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = True
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
             description='train upr-net for video frame interpolation')
@@ -319,7 +317,7 @@ if __name__ == "__main__":
     #**********************************************************#
     # => args for model
     parser.add_argument('--model_size', type=str, default="base",
-            help='model size, one of (att, raft, base, large, LARGE)')
+            help='model size, one of (att, raft, depth, softmax, base, large, LARGE)')
     parser.add_argument('--pyr_level', type=int, default=3,
             help='the number of pyramid levels of UPR-Net during training')
     # parser.add_argument('--nr_lvl_skipped', type=int, default=0,

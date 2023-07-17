@@ -9,3 +9,6 @@ VFI/core
 
 UPR-Net/.vscode/
 UPR-Net/checkpoints/
+
+Event_camera/data/
+Event_camera/RAM_Net/

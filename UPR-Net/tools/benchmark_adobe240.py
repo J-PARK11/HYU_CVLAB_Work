@@ -33,7 +33,7 @@ def evaluate(ppl, data_root, batch_size, nr_data_worker=1):
         img1 = data_gpu[:, 3:6]
         gt = data_gpu[:, 6:9]
         with torch.no_grad():
-            pred, bi_flow, warped_img0, warped_img1 = ppl.inference(img0, img1, pyr_level=PYR_LEVEL)
+            pred, bi_flow, warped_img0, warped_img1, _ = ppl.inference(img0, img1, pyr_level=PYR_LEVEL)
 
         batch_psnr = []
         batch_ssim = []
@@ -92,6 +92,8 @@ if __name__ == "__main__":
         model_file = "./checkpoints/upr-att.pkl"
     elif args.model_size == 'raft':
         model_file = "./checkpoints/upr-raft.pkl"
+    elif args.model_size == 'softmax':
+        model_file = "./checkpoints/upr-softmax.pkl"
     else:
         ValueError("No mactched Model Size!")
 

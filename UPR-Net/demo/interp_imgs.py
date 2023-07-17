@@ -161,6 +161,10 @@ if __name__ == "__main__":
         model_file = "./checkpoints/upr-att.pkl"
     elif args.model_size == 'raft':
         model_file = "./checkpoints/upr-raft.pkl"
+    elif args.model_size == 'depth':
+        model_file = "./checkpoints/upr-base.pkl"
+    elif args.model_size == 'softmax':
+        model_file = "./checkpoints/upr-softmax.pkl"        
     else:
         ValueError("No mactched Model Size!")
 
