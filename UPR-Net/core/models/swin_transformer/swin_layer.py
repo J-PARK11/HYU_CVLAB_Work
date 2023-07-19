@@ -266,7 +266,6 @@ class SepSTSBasicLayer(nn.Module):
         depth (int): Depths of this stage.
         num_heads (int): Number of attention head.
         depth_window_size (tuple[int]): spatial attention window size. Default: (1,8,8).
-        temporal_window_size (tuple[int]): temporal attention window size. Default: (4,1,1).
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim. Default: 4.
         qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
         qk_scale (float | None, optional): Override default qk scale of head_dim ** -0.5 if set.

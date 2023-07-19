@@ -23,13 +23,33 @@ class raft:
         self.DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Raft Flow Model & Weight load
-        self.weight = torchvision.models.optical_flow.Raft_Large_Weights.C_T_V2
-        self.model = torchvision.models.optical_flow.raft_large(self.weight).to(self.DEVICE)
+        # self.weight = torchvision.models.optical_flow.Raft_Large_Weights.C_T_V2
+        # self.model = torchvision.models.optical_flow.raft_large(self.weight).to(self.DEVICE)
 
-        # self.weight = torchvision.models.optical_flow.Raft_Small_Weights.C_T_V2
-        # self.model = torchvision.models.optical_flow.raft_small(self.weight).to(DEVICE)
+        self.weight = torchvision.models.optical_flow.Raft_Small_Weights.C_T_V2
+        self.model = torchvision.models.optical_flow.raft_small(self.weight).to(self.DEVICE)
+
+        for name, param in self.model.named_parameters():
+            if name.startswith('update_block'):
+                param.requires_grad = True
+                print(name,'True')
+            else:
+                param.requires_grad = False
+                print(name,'False')
 
     def pred(self, img0, img1):
+
+        # Flow Estimation
+        self.f01 = self.model(img0, img1)[-1]       # [B,2,H,W]
+        self.f10 = self.model(img1, img0)[-1]       # [B,2,H,W]
+
+        self.bi_flow = torch.concat([self.f01, self.f10], dim=1)
+        # self.bi_flow = torch.nn.functional.interpolate(self.bi_flow, scale_factor=0.25, mode="bilinear", align_corners=False)
+  
+        return self.bi_flow
+
+    
+    def inference(self, img0, img1):
         
         self.model.eval()
         with torch.no_grad():
@@ -65,7 +85,7 @@ class raft:
 
 if __name__ == '__main__':
     
-    path0 = '/home/work/main/jpark/UPR-Net/demo/images/glider0.png'
+    path0 = '/home/work/maiself.DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")n/jpark/UPR-Net/demo/images/glider0.png'
     path1 = '/home/work/main/jpark/UPR-Net/demo/images/glider1.png'
     SAVE_DIR = "/home/work/main/jpark/UPR-Net/demo/output"
 
