@@ -12,6 +12,8 @@ UPR-Net/checkpoints/
 
 Event_camera/data/
 Event_camera/RAM_Net/__pycache__/
-Event_camera/RAM_Net/.vscode/checkpoint/
+Event_camera/RAM_Net/.vscode/
+Event_camera/RAM_Net/checkpoint/
 Event_camera/RAM_Net/output/
 Event_camera/RAM_Net/raw/
+Event_camera/RAM_Net/core

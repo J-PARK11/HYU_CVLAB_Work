@@ -69,6 +69,7 @@ class BaseStateNet(nn.Module):
         else:
             raise KeyError('Could not identify state_combination, please add "state_combination":'
                            ' "sum", "conv", "convlstm" or "convgru" to config["model"]')
+        
         self.recurrent_block_type = recurrent_block_type
         self.activation = identity if activation is None or activation == 'identity' else getattr(torch, activation)
         self.norm = norm
@@ -140,6 +141,7 @@ class StateNetPhasedRecurrent(BaseStateNet):
                                   kernel_size=5, stride=1, padding=2)  # N x C x H x W -> N x 32 x H x W
         self.encoders_rgb = nn.ModuleList()
 
+        # ======= RAMNET ======= #
         if not bool(self.baseline):
             self.head_events = ConvLayer(self.num_input_channels_events, self.base_num_channels,
                                          kernel_size=5, stride=1, padding=2)  # N x C x H x W -> N x 32 x H x W
@@ -202,7 +204,7 @@ class StateNetPhasedRecurrent(BaseStateNet):
         self.build_prediction_layer()
 
     def forward_events(self, x, prev_super_state, prev_states_lstm, times):
-        x = self.head_events(x)
+        x = self.head_events(x) 
 
         if prev_states_lstm is None:
             prev_states_lstm = {}
@@ -231,7 +233,6 @@ class StateNetPhasedRecurrent(BaseStateNet):
                 super_state, state_lstm_state_comb = self.apply_state_combination(x, prev_super_state[i],
                                                                                   self.state_combination_events[i],
                                                                                   prev_states_lstm['state_comb'][i])
-            # assert torch.all(super_state.eq(state_lstm_state_comb))
             super_states.append(super_state)
             states_lstm['encoders'].append(state_lstm_encoder)
             states_lstm['state_comb'].append(state_lstm_state_comb)
@@ -259,6 +260,7 @@ class StateNetPhasedRecurrent(BaseStateNet):
 
             # for baselines: use output of state combination as input for next encoders.
             # for statenet: output of encoders is propagated to next encoder, state is only used for skip connections
+            
             if not bool(self.baseline):
                 if self.state_combination == "convlstm":  # and prev_states_lstm['state_comb'][i] is not None:
                     # for statenet with lstm: cell state is from last run_through, specific to the event encoder.
@@ -293,6 +295,7 @@ class StateNetPhasedRecurrent(BaseStateNet):
             x = super_states[-1][0]
         else:
             x = super_states[-1]
+        
         # residual blocks
         for resblock in self.resblocks:
             x = resblock(x)

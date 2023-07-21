@@ -49,8 +49,7 @@ class EventDataset(Dataset):
 
         self.read_timestamps()
         self.parse_event_folder()
-
-        self.data_id = int(self.base_folder.split('/')[-2][4:6])
+        self.data_id = int(self.base_folder.split('/')[-1][4:6])
         self.seq_id = int(self.base_folder.split('/')[-1].split('_')[-1])
 
     def read_timestamps(self):
@@ -241,7 +240,7 @@ class FrameDataset(EventDataset):
         # frame_tensor will be a [1 x H x W] floating point array (grayscale images)
         #print("first_valid_idx: ", self.first_valid_idx)
         #print("index for rgb image:", self.first_valid_idx + i, "at index ", i)
-        rgb_frame = io.imread(join(self.frame_folder, '05_{:03d}_{:04d}_image.png'.format(self.seq_id, self.first_valid_idx + i)), as_gray=False).astype(np.float32)
+        rgb_frame = io.imread(join(self.frame_folder, '{:02d}_{:03d}_{:04d}_image.png'.format(self.data_id, self.seq_id, self.first_valid_idx + i)), as_gray=False).astype(np.float32)
         if rgb_frame.shape[2] > 1:
             frame_tensor = rgb2gray(rgb_frame) #[H x W]
         

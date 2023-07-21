@@ -5,7 +5,7 @@
     "data_loader": {
         "train": {
             "type": "SequenceSynchronizedFramesEventsDataset",
-            "base_folder": "/home/work/main/jpark/Event_camera/data/Town05_train",
+            "base_folder": "/home/work/main/jpark/Event_camera/data/Town_train",
             "depth_folder": "depth/data",
             "frame_folder": "rgb/data",
             "flow_folder": "",
@@ -35,8 +35,8 @@
             "reg_factor": 5.70378,
             "baseline": false
         },
-        "batch_size": 8,
-        "num_workers": 4,
+        "batch_size": 6,
+        "num_workers": 0,
         "pin_memory": false,
         "normalize": true,
         "shuffle": true
@@ -65,10 +65,10 @@
         "median_error"
     ],
     "trainer": {
-        "epochs": 201,
+        "epochs": 20,
         "sequence_length": 10,
         "save_dir": "checkpoint",
-        "save_freq": 4,
+        "save_freq": 1,
         "verbosity": 2,
         "monitor": "val_loss",
         "monitor_mode": "min",

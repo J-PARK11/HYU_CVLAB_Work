@@ -111,6 +111,8 @@ class ERGB2Depth(BaseERGB2Depth):
         return predictions_dict, {'image': None}, prev_states_lstm
 
 
+
+# ========= RAMNET ========= #
 class ERGB2DepthRecurrent(BaseERGB2Depth):
     """
     Recurrent, UNet-like architecture where each encoder is followed by a ConvLSTM or ConvGRU.
@@ -136,6 +138,7 @@ class ERGB2DepthRecurrent(BaseERGB2Depth):
                                                                use_upsample_conv=self.use_upsample_conv,
                                                                recurrent_block_type=self.recurrent_block_type,
                                                                baseline=self.baseline)
+        
         self.max_num_channels = self.base_num_channels * pow(2, self.num_encoders)
 
     def forward(self, item, prev_super_states, prev_states_lstm):
@@ -173,12 +176,14 @@ class ERGB2DepthRecurrent(BaseERGB2Depth):
                 # for statenet, events and images have different encoders, so the last_lstm_state is the one
                 # from the last event of the previous sequence.
 
-            for k in range(loop_range):
+            # ========== 이벤트 들어가는 부분 ========== #
+            for k in range(loop_range):     # loop_range = 5
                 event_tensor = item['events{}'.format(k)].to(self.gpu)
                 times = None
                 # implement if phased architecture is used!
-                #times = item['times'].float().to(self.gpu) if self.use_phased_arch else None
+                # times = item['times'].float().to(self.gpu) if self.use_phased_arch else None
                 if self.baseline == "ergb0" or self.baseline == 'e':
+                    
                     # baselines don't have an event encoder, so forward_images is used here.
                     super_states_events, states_lstm_events = \
                         self.statenetphasedrecurrent.forward_images(event_tensor, prev_super_states,
@@ -197,6 +202,7 @@ class ERGB2DepthRecurrent(BaseERGB2Depth):
                 last_lstm_state = states_lstm_events
                 # reset lstm_state for next loop round.
 
+        # ========== 이미지 들어가는 부분 ========== #
         image_tensor = item['image'].to(self.gpu)
         times = None
 
@@ -210,6 +216,7 @@ class ERGB2DepthRecurrent(BaseERGB2Depth):
         super_states_images, states_lstm_images = \
             self.statenetphasedrecurrent.forward_images(image_tensor, prev_super_states,
                                                         last_lstm_state, times)
+                                                        
         prediction_images = self.statenetphasedrecurrent.forward_decoder(super_states_images)
 
         predictions_dict['image'] = prediction_images

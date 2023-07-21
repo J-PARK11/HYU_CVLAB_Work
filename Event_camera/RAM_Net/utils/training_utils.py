@@ -96,10 +96,10 @@ def plot_grad_flow_bars(named_parameters, lr=1):
     for n, p in named_parameters:
         if (p.requires_grad) and p.grad is not None:
             layers.append(n)
-            ave_grads.append(lr*p.grad.abs().mean())
-            max_grads.append(lr*p.grad.abs().max())
-            min_grads.append(lr*p.grad.abs().min())
-
+            ave_grads.append(lr*p.grad.abs().mean().cpu())
+            max_grads.append(lr*p.grad.abs().max().cpu())
+            min_grads.append(lr*p.grad.abs().min().cpu())
+    
     ax.bar(3*np.arange(len(max_grads)), max_grads, lw=2, color="r")
     ax.bar(3*np.arange(len(max_grads)), ave_grads, lw=2, color="m")
     ax.bar(3*np.arange(len(max_grads)), min_grads, lw=2, color="b")

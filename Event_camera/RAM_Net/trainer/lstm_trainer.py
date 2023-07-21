@@ -407,8 +407,8 @@ class LSTMTrainer(BaseTrainer):
         """
 
         # uncomment to see visualization of input data
-        '''image_old = None
-        for index, element in enumerate(self.data_loader.dataset):
+        image_old = None
+        """for index, element in enumerate(self.data_loader.dataset):
             print('index', index)
             for l in range(3):
                 #image_new1 = element[l]['events0'].cpu().numpy()[-1]
@@ -419,25 +419,25 @@ class LSTMTrainer(BaseTrainer):
                 #    ax[0].imshow(image_new1)
                 #    ax[1].imshow(image_old)
                 #    ax[2].imshow(image_new1-image_old)
-                fig, ax = plt.subplots(ncols=6, nrows=3)
+                fig, ax = plt.subplots(ncols=6, nrows=3, figsize=(20,10))
                 index_1 = 0
                 index_2 = 0
                 for i, key in enumerate(element[l].keys()):
                     if "depth" in key:
                         ax[0, index_1].imshow(element[l][key].cpu().numpy()[0])
-                        ax[0, index_1].set_title("groundtruth " + key)
+                        ax[0, index_1].set_title("gt " + key)
                         index_1 += 1
                     else:
                         # ax[2, index_2].imshow(torch.sum(input[key], dim=1)[0].cpu().numpy())  # all
                         ax[1, index_2].imshow(torch.sum(element[l][key][0:-2], dim=0).cpu().numpy())  # events only
                         ax[2, index_2].imshow(element[l][key][-1].cpu().numpy())  # image only
-                        ax[1, index_2].set_title("input eventdata" + key)
-                        ax[2, index_2].set_title("input imagedata" + key)
+                        ax[1, index_2].set_title("input event " + key)
+                        ax[2, index_2].set_title("input image " + key)
                         index_2 += 1
-                plt.show()
+                plt.savefig(f'/home/work/main/jpark/Event_camera/RAM_Net/output/preview/input_preview{index}.png', bbox_inches='tight')
 
                 #image_old = image_new2
-                #sequence = self.data_loader.dataset[index]'''
+                #sequence = self.data_loader.dataset[index]"""
 
         self.model.train()
 
@@ -595,7 +595,8 @@ class LSTMTrainer(BaseTrainer):
                         batch_idx * self.valid_data_loader.batch_size,
                         len(self.valid_data_loader) * self.valid_data_loader.batch_size,
                         100.0 * batch_idx / len(self.valid_data_loader)))
-            print("all losses in batch in validation: ", all_losses_in_batch)
+            # print("all losses in batch in validation: ", all_losses_in_batch,'\n')
+            print()
 
             # create a set of previews and log then
             val_previews = []

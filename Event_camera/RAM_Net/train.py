@@ -14,6 +14,9 @@ from utils.data_augmentation import Compose, RandomRotationFlip, RandomCrop, Cen
 from os.path import join
 import bisect
 
+import warnings
+warnings.filterwarnings(action='ignore')
+
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -36,7 +39,7 @@ class ConcatDatasetCustom(ConcatDataset):
 
 def concatenate_subfolders(base_folder, dataset_type, event_folder, depth_folder, frame_folder, sequence_length,
                            transform=None, proba_pause_when_running=0.0, proba_pause_when_paused=0.0, step_size=1,
-                           clip_distance=100.0, every_x_rgb_frame=1, normalize=True, scale_factor=1.0,
+                           clip_distance=1000.0, every_x_rgb_frame=1, normalize=True, scale_factor=1.0,
                            use_phased_arch=False, baseline=False, loss_composition=False, reg_factor=5.7,
                            dataset_idx_flag=False, recurrency=True):
     """
@@ -92,6 +95,7 @@ def main(config, resume, initial_checkpoint=None):
     recurrency = {}
 
     # this will raise an exception is the env variable is not set
+    os.environ['PREPROCESSED_DATASETS_FOLDER'] = 'home/work/main/jpark/Event_camera/data/Town01'
     preprocessed_datasets_folder = os.environ['PREPROCESSED_DATASETS_FOLDER']
 
     use_phased_arch = config['use_phased_arch']
@@ -140,6 +144,7 @@ def main(config, resume, initial_checkpoint=None):
     loss_weights = config['trainer']['loss_weights']
     normalize = config['data_loader'].get('normalize', True)
 
+    # Train Dataloader
     train_dataset = concatenate_subfolders(base_folder['train'],
                                            dataset_type['train'],
                                            event_folder['train'],
@@ -165,6 +170,7 @@ def main(config, resume, initial_checkpoint=None):
                                            recurrency=recurrency['train']
                                            )
 
+    # Validation Dataloader
     validation_dataset = concatenate_subfolders(base_folder['validation'],
                                                 dataset_type['validation'],
                                                 event_folder['validation'],
@@ -239,7 +245,8 @@ def main(config, resume, initial_checkpoint=None):
                               data_loader=data_loader,
                               valid_data_loader=valid_data_loader,
                               train_logger=train_logger)
-
+    
+    print('\n>>>>>>>>>>> Train Start <<<<<<<<<<<')
     trainer.train()
 
 
@@ -275,5 +282,7 @@ if __name__ == '__main__':
         if args.resume is None:
             assert not os.path.exists(path), "Path {} already exists!".format(path)
     assert config is not None
-
+    
+    print('\n>>>>>>>>>> RAMNET train.py <<<<<<<<<<')
     main(config, args.resume, args.initial_checkpoint)
+    print('\n>>>>>>>>>>>>> Complete <<<<<<<<<<<<<')
