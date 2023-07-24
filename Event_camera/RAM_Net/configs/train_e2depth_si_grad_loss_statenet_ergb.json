@@ -65,10 +65,10 @@
         "median_error"
     ],
     "trainer": {
-        "epochs": 20,
+        "epochs": 15,
         "sequence_length": 10,
         "save_dir": "checkpoint",
-        "save_freq": 1,
+        "save_freq": 2,
         "verbosity": 2,
         "monitor": "val_loss",
         "monitor_mode": "min",
@@ -83,7 +83,7 @@
     "use_phased_arch": false,
     "model": {
         "num_bins_rgb": 1,
-        "num_bins_events": 5,
+        "num_bins_events": 7,
         "skip_type": "sum",
         "recurrent_block_type": "conv",
         "state_combination": "convgru",

@@ -25,6 +25,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 
+# ============= RAMNET Dataloader ============= #
 class SequenceSynchronizedFramesEventsDataset(Dataset):
     """Load sequences of time-synchronized {event tensors + depth} from a folder."""
 
@@ -424,27 +425,164 @@ class SynchronizedFramesEventsDataset(Dataset):
                     item['times_image'] = timestamp
         return item     #events{k}, depth_events{k}, image, depth_image
 
-if __name__ == '__main__':
-    dataset = SequenceSynchronizedFramesEventsDataset(
-                 base_folder = "/home/work/main/jpark/Event_camera/data/Town05_test/sequence_0",
-                 event_folder = "events/voxels",
-                 depth_folder='depth/data/', frame_folder='rgb/data/',
-                 flow_folder='flow/data/', semantic_folder='semantic/data/',
+
+# ============= Temporal-aware Event Camera Stacking Method ============= #
+class TA_ECS(Dataset):
+    """
+    Load sequences of time-synchronized {event tensors + depth} from a folder.
+    """
+
+    def __init__(self, base_folder, event_folder, depth_folder='depth/data/', frame_folder='rgb/data/', flow_folder='flow/data/', semantic_folder='semantic/data/',
                  start_time=0.0, stop_time=0.0,
                  sequence_length=2, transform=None,
                  proba_pause_when_running=0.0, proba_pause_when_paused=0.0,
-                 step_size=20,
+                 step_size=5,
                  clip_distance=1000.0,
                  normalize=True,
                  scale_factor=1.0,
                  use_phased_arch=False,
-                 every_x_rgb_frame=1,
+                 every_x_rgb_frame=5,
+                 baseline=False,
+                 loss_composition=False,
+                 reg_factor=5.7,
+                 recurrency=True):
+        
+        assert(sequence_length > 0)
+        assert(step_size > 0)
+        assert(clip_distance > 0)
+        self.L = sequence_length
+
+        # Recurrency = Synchronized
+        if not recurrency:
+            self.dataset = SynchronizedFramesEventsRawDataset(base_folder, event_folder, depth_folder, frame_folder,
+                                                           flow_folder, semantic_folder, start_time, stop_time,
+                                                           clip_distance, every_x_rgb_frame, transform,
+                                                           normalize=normalize, use_phased_arch=use_phased_arch,
+                                                           baseline=baseline, loss_composition=loss_composition)
+        else:   # RAMNET Dataset
+            self.dataset = SynchronizedFramesEventsDataset(base_folder, event_folder, depth_folder, frame_folder,
+                                                           flow_folder, semantic_folder, start_time, stop_time,
+                                                           clip_distance, every_x_rgb_frame, transform,
+                                                           normalize=normalize, use_phased_arch=use_phased_arch,
+                                                           baseline=baseline, loss_composition=loss_composition,
+                                                           reg_factor=reg_factor, recurrency=recurrency)
+
+        self.event_dataset = self.dataset.event_dataset     # Voxel Grid Dataset
+        self.step_size = step_size
+        self.every_x_rgb_frame = every_x_rgb_frame
+        if self.L * self.every_x_rgb_frame >= self.dataset.length:
+            self.length = 0
+        else:
+            self.length = (self.dataset.length - self.L * self.every_x_rgb_frame) // self.step_size\
+                          // self.every_x_rgb_frame + 1
+
+        self.proba_pause_when_running = proba_pause_when_running
+        self.proba_pause_when_paused = proba_pause_when_paused
+        self.scale_factor = scale_factor
+        self.use_phased_arch = use_phased_arch
+        self.baseline = baseline
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, i):
+
+        """ Returns a list containing synchronized events <-> frame pairs
+            [e_{i-L} <-> I_{i-L},
+             e_{i-L+1} <-> I_{i-L+1},
+            ...,
+            e_{i-1} <-> I_{i-1},
+            e_i <-> I_i]
+        """
+        assert(i >= 0)
+        assert(i < self.length)
+
+        # generate a random seed here, that we will pass to the transform function
+        # of each item, to make sure all the items in the sequence are transformed
+        # in the same way
+        seed = random.randint(0, 2**32)
+
+        # data augmentation: add random, virtual "pauses",
+        # i.e. zero out random event tensors and repeat the last frame
+        sequence = []
+
+        # add the first element (i.e. do not start with a pause)
+        k = 0
+        j = i * self.step_size
+        item = self.dataset.__getitem__(j, seed)
+        sequence.append(item)
+
+        paused = False
+        for n in range(self.L - 1):
+
+            # decide whether we should make a "pause" at this step
+            # the probability of "pause" is conditioned on the previous state (to encourage long sequences)
+            u = np.random.rand()
+            if paused:
+                probability_pause = self.proba_pause_when_paused
+            else:
+                probability_pause = self.proba_pause_when_running
+            paused = (u < probability_pause)
+
+            if paused:
+                # add a tensor filled with zeros, paired with the last frame
+                # do not increase the counter
+                item = self.dataset.__getitem__(j + k, seed)
+                item['events'].fill_(0.0)
+                if 'flow' in item:
+                    item['flow'].fill_(0.0)
+                sequence.append(item)
+            else:
+                # normal case: append the next item to the list
+                k += 1
+                item = self.dataset.__getitem__(j + k, seed)
+                sequence.append(item)
+
+        # down sample data
+        if self.scale_factor < 1.0:
+            for data_items in sequence:
+                for k, item in data_items.items():
+                    if k != "times" and k != "batchlength_events":
+                        item = item[None]
+                        if "semantic" in k:
+                            item = f.interpolate(item, scale_factor=self.scale_factor,
+                                                 recompute_scale_factor=False)
+                        else:
+                            item = f.interpolate(item, scale_factor=self.scale_factor, mode='bilinear',
+                                                 recompute_scale_factor=False, align_corners=False)
+                        item = item[0]
+                        data_items[k] = item
+        return sequence
+
+
+if __name__ == '__main__':
+    """
+    Events는 5개의 타임스탬프
+    """
+    dataset = SequenceSynchronizedFramesEventsDataset(
+                 base_folder = "/home/work/main/jpark/Event_camera/data/Town05_sample/Town05_sequence_0",
+                 event_folder = "events/voxels",
+                 depth_folder='depth/data/', frame_folder='rgb/data/',
+                 flow_folder='flow/data/', semantic_folder='semantic/data/',
+                 start_time=0.0, stop_time=0.0,
+                 sequence_length=10, transform=None,
+                 proba_pause_when_running=0.0, proba_pause_when_paused=0.0,
+                 step_size=5,
+                 clip_distance=1000.0,
+                 normalize=True,
+                 scale_factor=1.0,
+                 use_phased_arch=False,
+                 every_x_rgb_frame=5,
                  baseline=False,
                  loss_composition=False,
                  reg_factor=5.7,
                  recurrency=True)
 
     i = dataset.__getitem__(0)[0]
-    print(f'SynchronizedFramesEventsDataset: {dataset.__len__()}')
+    event = i['events0']
+    print(f'SynchronizedFramesEventsDataset_baseline: {dataset.__len__()} batch')
+    print(f'items: {i.keys()}')
     print('events:', i['events0'].shape, 'depth_events:', i['depth_events0'].shape)
     print('image:', i['image'].shape, 'depth_image:', i['depth_image'].shape)
+    print(f'event data: {event.shape}, {event.dtype}, {type(event)}, {torch.mean(event)}, {torch.max(event)}, {torch.min(event)}')
+    print(event[event != 0][:10])

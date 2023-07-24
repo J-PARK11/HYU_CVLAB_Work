@@ -230,6 +230,8 @@ def main(config, initial_checkpoint, output_folder, data_folder):
             input = {}
             for key, value in item[0].items():
                 input[key] = value[None, :]
+
+            # ========================== INFERENCE ========================== #
             new_predicted_targets, new_super_states, new_states_lstm = model(input,
                                                                              prev_super_states['image'],
                                                                              prev_states_lstm)
