@@ -304,6 +304,7 @@ class StateNetPhasedRecurrent(BaseStateNet):
         for i, decoder in enumerate(self.decoders):
             if i == 0:
                 x = decoder(x)
+                
             else:
                 if not bool(self.baseline) and self.state_combination == "convlstm":
                     x = decoder(self.apply_skip_connection(x, super_states[self.num_encoders - i - 1][0]))

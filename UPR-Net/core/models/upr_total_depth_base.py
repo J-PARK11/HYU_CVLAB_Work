@@ -8,6 +8,84 @@ from ..utils import correlation
 from ..models.softsplat import softsplat
 from ..models.swin_transformer import swin_encoder
 
+"""
+UPR-Total: Skip + Softmax + Transformer
+"""
+#**************************************************************************************************#
+# => Depth Estimator
+#**************************************************************************************************#
+class DepthEstimator(nn.Module): 
+    """
+    Feature Encoder:
+    A 3-stage feature pyramid, which by default is shared by the motion
+    estimator and synthesis network.
+    ==> 4 Conv per 3 stages & Downsample at first layer of stage. (1 -> 1/4)
+    ### Channel Tracking ###
+    3 -> 16 -> 32 -> 64 ->
+    """
+    
+    def __init__(self):
+        super(DepthEstimator, self).__init__()
+        self.conv_stage0 = nn.Sequential(
+                nn.Conv2d(in_channels=3, out_channels=16, kernel_size=3,
+                    stride=1, padding=1),
+                nn.LeakyReLU(inplace=False, negative_slope=0.1),
+                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3,
+                    stride=1, padding=1),
+                nn.LeakyReLU(inplace=False, negative_slope=0.1))
+        self.conv_stage1 = nn.Sequential(
+                nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3,
+                    stride=2, padding=1),
+                nn.LeakyReLU(inplace=False, negative_slope=0.1),
+                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3,
+                    stride=1, padding=1),
+                nn.LeakyReLU(inplace=False, negative_slope=0.1))
+        self.conv_stage2 = nn.Sequential(
+                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3,
+                    stride=2, padding=1),
+                nn.LeakyReLU(inplace=False, negative_slope=0.1),
+                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3,
+                    stride=1, padding=1),
+                nn.LeakyReLU(inplace=False, negative_slope=0.1))
+
+        self.skip0 = nn.Sequential(
+                nn.Conv2d(in_channels=16, out_channels=1, kernel_size=3,
+                    stride=1, padding=1),
+                nn.Sigmoid(),
+                )
+        self.skip1 = nn.Sequential(
+                nn.Conv2d(in_channels=32, out_channels=1, kernel_size=3,
+                    stride=1, padding=1),
+                nn.Sigmoid(),
+                )
+        self.skip2 = nn.Sequential(
+                nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3,
+                    stride=1, padding=1),
+                nn.Sigmoid(),
+                )
+
+    def forward(self, img):
+        """
+        torch.Size([32, 16, 64, 112])
+        torch.Size([32, 1, 64, 112])
+
+        torch.Size([32, 32, 32, 56])
+        torch.Size([32, 1, 32, 56])
+
+        torch.Size([32, 64, 16, 28])
+        torch.Size([32, 1, 16, 28])
+        """
+        C0 = self.conv_stage0(img)
+        skip0 = self.skip0(C0)
+
+        C1 = self.conv_stage1(C0)
+        skip1 = self.skip1(C1)
+
+        C2 = self.conv_stage2(C1)
+        skip2 = self.skip2(C2)
+
+        return [skip0, skip1, skip2]
+
 #**************************************************************************************************#
 # => Motion Estimation
 #**************************************************************************************************#
@@ -38,7 +116,7 @@ class MotionEstimator(nn.Module):
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer3 = nn.Sequential(
-                nn.Conv2d(in_channels=128, out_channels=112,
+                nn.Conv2d(in_channels=(128+160), out_channels=112,
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer4 = nn.Sequential(
@@ -46,7 +124,7 @@ class MotionEstimator(nn.Module):
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer5 = nn.Sequential(
-                nn.Conv2d(in_channels=96, out_channels=64,
+                nn.Conv2d(in_channels=(96+112), out_channels=64,
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer6 = nn.Sequential(
@@ -54,16 +132,16 @@ class MotionEstimator(nn.Module):
                     kernel_size=3, stride=1, padding=1))
 
 
-    def forward(self, feat0, feat1, last_feat, last_flow):
+    def forward(self, feat0, feat1, depth0, depth1, last_feat, last_flow):
         corr_fn=correlation.FunctionCorrelation
-
+        
         # Softsplat Forward Warping
         feat0 = softsplat.FunctionSoftsplat(
-                tenInput=feat0, tenFlow=last_flow[:, :2]*0.25*0.5,
-                tenMetric=None, strType='average')
+                tenInput=feat0, tenFlow=last_flow[:, :2]*0.5,
+                tenMetric=depth0, strType='softmax')
         feat1 = softsplat.FunctionSoftsplat(
-                tenInput=feat1, tenFlow=last_flow[:, 2:]*0.25*0.5,
-                tenMetric=None, strType='average')
+                tenInput=feat1, tenFlow=last_flow[:, 2:]*0.5,
+                tenMetric=depth1, strType='softmax')
 
         # Correlation Volumne
         volume = F.leaky_relu(
@@ -73,10 +151,14 @@ class MotionEstimator(nn.Module):
         # CNN Predictor (6-layer)
         input_feat = torch.cat([volume, feat0, feat1, last_feat, last_flow], 1)
         feat = self.conv_layer1(input_feat)
+        skip1 = feat
+
         feat = self.conv_layer2(feat)
-        feat = self.conv_layer3(feat)
+        feat = self.conv_layer3(torch.cat([feat, skip1], dim=1))
+        skip3 = feat
+        
         feat = self.conv_layer4(feat)
-        feat = self.conv_layer5(feat)
+        feat = self.conv_layer5(torch.cat([feat, skip3], dim=1))
         flow = self.conv_layer6(feat)
 
         return flow, feat
@@ -153,7 +235,7 @@ class SynthesisNetwork(nn.Module):
                 stride=1, padding=1)
 
 
-    def get_warped_representations(self, bi_flow, c0, c1, i0=None, i1=None, time_period=0.5):
+    def get_warped_representations(self, bi_flow, c0, c1, depth0, depth1, i0=None, i1=None, time_period=0.5):
 
         # Flow interpolation
         flow_0t = bi_flow[:, :2] * time_period
@@ -162,30 +244,30 @@ class SynthesisNetwork(nn.Module):
         # Softsplat Forward Warping
         warped_c0 = softsplat.FunctionSoftsplat(
                 tenInput=c0, tenFlow=flow_0t,
-                tenMetric=None, strType='average')
+                tenMetric=depth0, strType='softmax')
         warped_c1 = softsplat.FunctionSoftsplat(
                 tenInput=c1, tenFlow=flow_1t,
-                tenMetric=None, strType='average')
+                tenMetric=depth1, strType='softmax')
         
         if (i0 is None) and (i1 is None):
             return warped_c0, warped_c1
         else:
             warped_img0 = softsplat.FunctionSoftsplat(
                     tenInput=i0, tenFlow=flow_0t,
-                    tenMetric=None, strType='average')
+                    tenMetric=depth0, strType='softmax')
             warped_img1 = softsplat.FunctionSoftsplat(
                     tenInput=i1, tenFlow=flow_1t,
-                    tenMetric=None, strType='average')
+                    tenMetric=depth1, strType='softmax')
             flow_0t_1t = torch.cat((flow_0t, flow_1t), 1)
             return warped_img0, warped_img1, warped_c0, warped_c1, flow_0t_1t
 
 
-    def forward(self, last_i, i0, i1, c0_pyr, c1_pyr, bi_flow_pyr, time_period=0.5):
+    def forward(self, last_i, i0, i1, c0_pyr, c1_pyr, bi_flow_pyr, depth0_pyr, depth1_pyr, time_period=0.5):
         
         # Softsplat Forward Warping & Encoder Network
         warped_img0, warped_img1, warped_c0, warped_c1, flow_0t_1t = \
                 self.get_warped_representations(
-                        bi_flow_pyr[0], c0_pyr[0], c1_pyr[0], i0, i1,
+                        bi_flow_pyr[0], c0_pyr[0], c1_pyr[0], depth0_pyr[0], depth1_pyr[0], i0, i1,
                         time_period=time_period)
         input_feat = torch.cat(
                 (last_i, warped_img0, warped_img1, i0, i1, flow_0t_1t), 1)
@@ -194,11 +276,13 @@ class SynthesisNetwork(nn.Module):
         
         warped_c0, warped_c1 = self.get_warped_representations(
                         bi_flow_pyr[1], c0_pyr[1], c1_pyr[1],
+                        depth0_pyr[1], depth1_pyr[1],
                         time_period=time_period)
         s2 = self.encoder_down2(torch.cat((s1, warped_c0, warped_c1), 1))
         
         warped_c0, warped_c1 = self.get_warped_representations(
                         bi_flow_pyr[2], c0_pyr[2], c1_pyr[2],
+                        depth0_pyr[2], depth1_pyr[2],
                         time_period=time_period)
 
         # Decoder Network
@@ -209,8 +293,9 @@ class SynthesisNetwork(nn.Module):
         # prediction
         refine = self.pred(x)
         refine_res = torch.sigmoid(refine[:, :3]) * 2 - 1
-        refine_mask0 = torch.sigmoid(refine[:, 3:4])
-        refine_mask1 = torch.sigmoid(refine[:, 4:5])    
+        softmax_mask = torch.softmax(refine[:,3:5], dim=1)
+        refine_mask0 = softmax_mask[:,:1]
+        refine_mask1 = softmax_mask[:,1:]   
 
         merged_img = (warped_img0 * refine_mask0 * (1 - time_period) + \
                 warped_img1 * refine_mask1 * time_period)
@@ -229,9 +314,12 @@ class SynthesisNetwork(nn.Module):
         # For visualization
         extra_dict["refine_mask0"] = refine_mask0
         extra_dict["refine_mask1"] = refine_mask1
-        extra_dict["refine_res"] = refine_res
+        extra_dict["depth0"] = depth0_pyr[0]
+        extra_dict["depth1"] = depth1_pyr[0]
 
         return interp_img, extra_dict
+
+
 
 #**************************************************************************************************#
 # => Unified model
@@ -242,6 +330,7 @@ class Model(nn.Module):
         self.pyr_level = pyr_level
         self.nr_lvl_skipped = nr_lvl_skipped
         self.feat_pyramid = swin_encoder.SepSTSEncoder()
+        self.depth_estimator = DepthEstimator()
         self.motion_estimator = MotionEstimator()
         self.synthesis_network = SynthesisNetwork()
 
@@ -253,11 +342,14 @@ class Model(nn.Module):
         # (B, C, D, H, W)
         imgs = torch.concat([img0.unsqueeze(2), img1.unsqueeze(2)], dim=2)
         feat0_pyr, feat1_pyr = self.feat_pyramid(imgs)
+        depth0_pyr = self.depth_estimator(img0)
+        depth1_pyr = self.depth_estimator(img1)
 
         # bi-directional flow estimation
         if not skip_me:
             flow, feat = self.motion_estimator(
                     feat0_pyr[-1], feat1_pyr[-1],
+                    depth0_pyr[-1], depth1_pyr[-1],
                     last_feat, last_flow)
         else:
             flow = last_flow
@@ -279,22 +371,23 @@ class Model(nn.Module):
                     mode="bilinear", align_corners=False) * 0.5
             bi_flow_pyr.append(tmp_flow)
 
-        ## merge warped frames as initial in85terpolation for frame synthesis
+        ## merge warped frames as initial interpolation for frame synthesis
         if last_interp is None:
             flow_0t = ori_resolution_flow[:, :2] * time_period
             flow_1t = ori_resolution_flow[:, 2:4] * (1 - time_period)
             warped_img0 = softsplat.FunctionSoftsplat(
                     tenInput=img0, tenFlow=flow_0t,
-                    tenMetric=None, strType='average')
+                    tenMetric=None, strType='average')          # depth0_pyr[0], softmax
             warped_img1 = softsplat.FunctionSoftsplat(
                     tenInput=img1, tenFlow=flow_1t,
-                    tenMetric=None, strType='average')
+                    tenMetric=None, strType='average')          # depth1_pyr[0], softmax
             last_interp = warped_img0 * (1 - time_period) \
                     +  warped_img1 * time_period
 
         ## do synthesis
         interp_img, extra_dict = self.synthesis_network(
                 last_interp, img0, img1, feat0_pyr, feat1_pyr, bi_flow_pyr,
+                depth0_pyr, depth1_pyr,
                 time_period=time_period)
         return flow, feat, interp_img, extra_dict
 
@@ -381,7 +474,7 @@ class Model(nn.Module):
                 mode="bilinear", align_corners=False)
 
         return interp_img, bi_flow, extra_dict['warped_img0'], extra_dict['warped_img1'], \
-                {"interp_imgs": interp_imgs, "bi_flows": bi_flows, "refine_mask0": extra_dict['refine_mask0'], "refine_mask1": extra_dict['refine_mask1'], "refine_res": extra_dict['refine_res']}
+                {"interp_imgs": interp_imgs, "bi_flows": bi_flows, "refine_mask0": extra_dict['refine_mask0'], "refine_mask1": extra_dict['refine_mask1'], "refine_res": extra_dict['refine_res'], "depth0": extra_dict['depth0'], "depth1": extra_dict['depth1']}
 
 
 if __name__ == "__main__":

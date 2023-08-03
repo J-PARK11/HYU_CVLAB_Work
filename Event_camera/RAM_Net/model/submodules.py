@@ -96,7 +96,7 @@ class UpsampleConvLayer(nn.Module):
 
         return out
 
-
+# ==========  RAMNET ========== #
 class RecurrentConvLayer(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0,
                  recurrent_block_type='convlstm', activation='relu', norm=None, BN_momentum=0.1):
@@ -343,7 +343,7 @@ class ConvLSTM(nn.Module):
         # chunk across channel dimension
         in_gate, remember_gate, out_gate, cell_gate = gates.chunk(4, 1)
 
-        # apply sigmoid non linearity
+        # apply sigmoid no￼n linearity
         in_gate = torch.sigmoid(in_gate)
         remember_gate = torch.sigmoid(remember_gate)
         out_gate = torch.sigmoid(out_gate)

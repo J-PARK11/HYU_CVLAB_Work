@@ -9,7 +9,7 @@ import torch.optim as optim
 import itertools
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn.functional as F
-from .loss import EPE, Ternary, LapLoss
+from .loss import EPE, Ternary, LapLoss, VGGPerceptualLoss
 
 from core.models.upr_base import Model as base_model
 from core.models.upr_large import Model as large_model
@@ -19,6 +19,8 @@ from core.models.upr_att_base import Model as att_model
 from core.models.upr_raft_base_extra import Model as raft_model
 from core.models.upr_depth_base import Model as depth_model
 from core.models.upr_softmax_base import Model as softmax_model
+from core.models.upr_total_base import Model as total_model
+from core.models.upr_total_depth_base import Model as total_depth_model
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -35,6 +37,7 @@ class Pipeline:
         self.optimizer_cfg_dict = optimizer_cfg_dict
         self.epe = EPE()
         self.ter = Ternary()
+        self.perloss = VGGPerceptualLoss()
         self.laploss = LapLoss()
 
         self.init_model()
@@ -140,6 +143,12 @@ class Pipeline:
         elif model_size == 'softmax':
             self.model = softmax_model(pyr_level, nr_lvl_skipped)
             print('Softmax Mask model selected')
+        elif model_size == 'total':
+            self.model = total_model(pyr_level, nr_lvl_skipped)
+            print('Total model selected')
+        elif model_size == 'total_depth':
+            self.model = total_depth_model(pyr_level, nr_lvl_skipped)
+            print('Total Depth model selected')
 
         # load pretrained model weight
         if load_pretrain:
@@ -187,8 +196,7 @@ class Pipeline:
 
         interp_img, bi_flow, warped_img0, warped_img1, extra_dict = self.model(img0, img1, time_period)
         with torch.no_grad():
-            loss_interp_l2_nograd = (((interp_img - gt) ** 2 + 1e-6) ** 0.5)\
-                    .mean()
+            loss_interp_l2_nograd = (((interp_img - gt) ** 2 + 1e-6) ** 0.5).mean()
 
         loss_G = 0
         if loss_type == "l1":
@@ -200,6 +208,20 @@ class Pipeline:
             loss_interp_l2 = (((interp_img - gt) ** 2 + 1e-6) ** 0.5).mean()
             loss_ter = self.ter(interp_img, gt).mean()
             loss_G = loss_interp_l2 + loss_ter
+        elif loss_type == 'l1+census':
+            loss_interp_l1 = (interp_img - gt).abs().mean()
+            loss_ter = self.ter(interp_img, gt).mean()
+            loss_G = loss_interp_l1 + loss_ter
+        elif loss_type == 'l1+census+perloss':
+            loss_interp_l1 = (interp_img - gt).abs().mean()
+            loss_ter = self.ter(interp_img, gt).mean()
+            loss_perloss = self.perloss(interp_img - gt).mean()
+            loss_G = loss_interp_l1 + loss_ter + loss_perloss
+        elif loss_type == 'l1+warp+cencus':
+            loss_interp_l1 = (interp_img - gt).abs().mean()
+            loss_ter = self.ter(interp_img, gt).mean()
+            loss_warp_l1 = (warped_img0 - warped_img1).abs().mean()
+            loss_G = loss_interp_l1 + loss_ter + loss_warp_l1
         else:
             ValueError("unsupported loss type!")
 

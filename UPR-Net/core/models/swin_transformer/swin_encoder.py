@@ -57,7 +57,7 @@ class SepSTSEncoder(nn.Module):
     def __init__(self, nf=[64, 32], NF=2, window_size=[(1, 8, 8), (1, 8, 8), (1, 8, 8)], nh=[2, 4, 8]):
         super(SepSTSEncoder, self).__init__()
         self.stem = nn.Sequential(
-            nn.Conv3d(in_channels=3, out_channels=nf[-1]//2, kernel_size=(1,3,3), stride=1, padding=1),
+            nn.Conv3d(in_channels=3, out_channels=nf[-1]//2, kernel_size=(1,3,3), stride=(1,1,1), padding=(0,1,1)),
             nn.LeakyReLU(negative_slope=0.2),
             ResBlock(nf[-1]//2, kernel_size=3),
         )
@@ -66,11 +66,21 @@ class SepSTSEncoder(nn.Module):
         self.stage2 = SepSTSLayer(nf[-1], depth=2, num_frames=NF, num_heads=nh[1], window_size=window_size[1])
         self.stage3 = SepSTSLayer(nf[-2], depth=4, num_frames=NF, num_heads=nh[2], window_size=window_size[2])
 
-        self.down2 = nn.Conv3d(in_channels=nf[-1]//2, out_channels=nf[-1], kernel_size=(1,3,3), stride=(1,2,2), padding=1)
-        self.down3 = nn.Conv3d(in_channels=nf[-1], out_channels=nf[-2], kernel_size=(1,3,3), stride=(1,2,2), padding=1)
+        self.down2 = nn.Conv3d(in_channels=nf[-1]//2, out_channels=nf[-1], kernel_size=(1,3,3), stride=(1,2,2), padding=(0,1,1))
+        self.down3 = nn.Conv3d(in_channels=nf[-1], out_channels=nf[-2], kernel_size=(1,3,3), stride=(1,2,2), padding=(0,1,1))
 
 
     def forward(self, x):
+        
+        """ 
+        x.shape  torch.Size([32, 3, 2, 64, 112])
+        x0.shape torch.Size([32, 16, 2, 64, 112])
+        x1.shape torch.Size([32, 16, 2, 64, 112])
+        x2.shape torch.Size([32, 32, 2, 32, 56])
+        x2.shape torch.Size([32, 32, 2, 32, 56])
+        x3.shape torch.Size([32, 64, 2, 16, 28])
+        """
+
         x0 = self.stem(x)
         x1 = self.stage1(x0)
 
@@ -79,7 +89,7 @@ class SepSTSEncoder(nn.Module):
 
         x3 = self.down3(x2)
         x3 = self.stage3(x3)
-
+        
         return (x1[:,:,0], x2[:,:,0], x3[:,:,0]), (x1[:,:,1], x2[:,:,1], x3[:,:,1])
 
 if __name__ == '__main__':

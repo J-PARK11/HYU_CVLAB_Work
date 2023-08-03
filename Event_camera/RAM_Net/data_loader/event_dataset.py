@@ -158,7 +158,7 @@ class VoxelGridDataset(EventDataset):
             event_tensor = np.load(join(self.event_folder, 'event_tensor_{:010d}.npy'.format(self.first_valid_idx + i)))
         else:
             path_event = glob.glob(self.event_folder + '/*_{:04d}_voxel.npy'.format(self.first_valid_idx + i))
-            event_tensor = np.load(path_event[0])
+            event_tensor = np.load(path_event[0])[-2:]
         
         if self.normalize:
             # normalize the event tensor (voxel grid) in such a way that the mean and stddev of the nonzero values
@@ -177,12 +177,13 @@ class VoxelGridDataset(EventDataset):
             events = self.transform(events)
 
         ## Hand Made =========================== #########################
+        """
         negativ_input = np.zeros(events.shape[1:])
         positiv_input = np.zeros(events.shape[1:])
         
-        for weight, eve in zip([0.2, 0.4, 0.6, 0.8, 1.0], events):
-            negativ = np.where(eve <= -0.5, -weight, 0.0)
-            positiv = np.where(eve > 0.9, weight, 0.0)
+        for weight, eve in zip([1.0, 2.0, 3.0, 4.0, 5.0], events):
+            negativ = np.where(eve <= -0.6, -weight, 0.0)
+            positiv = np.where(eve >= 0.6, weight, 0.0)
             negativ_input[negativ != 0 ] = negativ[negativ != 0 ]
             positiv_input[positiv != 0 ] = positiv[positiv != 0 ]
         
@@ -190,6 +191,7 @@ class VoxelGridDataset(EventDataset):
         positiv_input = torch.tensor(positiv_input).unsqueeze(0).type(torch.FloatTensor)
         
         events = torch.cat([events, negativ_input, positiv_input], axis=0)
+        """
         return {'events': events}  # [num_bins x H x W] tensor
 
 class RawEventsDataset(EventDataset):

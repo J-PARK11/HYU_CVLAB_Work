@@ -443,6 +443,7 @@ class LSTMTrainer(BaseTrainer):
 
         all_losses_in_batch = {}
         for batch_idx, sequence in enumerate(self.data_loader):
+            torch.cuda.synchronize()
             self.optimizer.zero_grad()
             losses, _, _, _, _, _ = self.forward_pass_sequence(sequence)
             loss = losses['loss']

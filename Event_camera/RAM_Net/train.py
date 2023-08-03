@@ -95,7 +95,7 @@ def main(config, resume, initial_checkpoint=None):
     recurrency = {}
 
     # this will raise an exception is the env variable is not set
-    os.environ['PREPROCESSED_DATASETS_FOLDER'] = 'home/work/main/jpark/Event_camera/data/Town01'
+    os.environ['PREPROCESSED_DATASETS_FOLDER'] = 'home/work/main/jpark/Event_camera/data'
     preprocessed_datasets_folder = os.environ['PREPROCESSED_DATASETS_FOLDER']
 
     use_phased_arch = config['use_phased_arch']
@@ -123,7 +123,7 @@ def main(config, resume, initial_checkpoint=None):
         try:
             clip_distance[split] = config['data_loader'][split]['clip_distance']
         except KeyError:
-            clip_distance[split] = 100.0
+            clip_distance[split] = 1000.0
 
         try:
             every_x_rgb_frame[split] = config['data_loader'][split]['every_x_rgb_frame']
@@ -247,6 +247,7 @@ def main(config, resume, initial_checkpoint=None):
                               train_logger=train_logger)
     
     print('\n>>>>>>>>>>> Train Start <<<<<<<<<<<')
+    torch.cuda.synchronize()
     trainer.train()
 
 

@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 class SequenceSynchronizedFramesEventsDataset(Dataset):
     """Load sequences of time-synchronized {event tensors + depth} from a folder."""
 
-    def __init__(self, base_folder, event_folder, depth_folder='depth/data/', frame_folder='rgb/data/', flow_folder='flow/data/', semantic_folder='semantic/data/',
+    def __init__(self, base_folder, event_folder, depth_folder='depth/data/', frame_folder='rgb/data/',
                  start_time=0.0, stop_time=0.0,
                  sequence_length=2, transform=None,
                  proba_pause_when_running=0.0, proba_pause_when_paused=0.0,
@@ -51,13 +51,13 @@ class SequenceSynchronizedFramesEventsDataset(Dataset):
         # Recurrency = Synchronized
         if not recurrency:
             self.dataset = SynchronizedFramesEventsRawDataset(base_folder, event_folder, depth_folder, frame_folder,
-                                                           flow_folder, semantic_folder, start_time, stop_time,
-                                                           clip_distance, every_x_rgb_frame, transform,
-                                                           normalize=normalize, use_phased_arch=use_phased_arch,
-                                                           baseline=baseline, loss_composition=loss_composition)
+                                                              start_time, stop_time,
+                                                              clip_distance, every_x_rgb_frame, transform,
+                                                              normalize=normalize, use_phased_arch=use_phased_arch,
+                                                              baseline=baseline, loss_composition=loss_composition)
         else:
             self.dataset = SynchronizedFramesEventsDataset(base_folder, event_folder, depth_folder, frame_folder,
-                                                           flow_folder, semantic_folder, start_time, stop_time,
+                                                           start_time, stop_time,
                                                            clip_distance, every_x_rgb_frame, transform,
                                                            normalize=normalize, use_phased_arch=use_phased_arch,
                                                            baseline=baseline, loss_composition=loss_composition,
@@ -124,8 +124,6 @@ class SequenceSynchronizedFramesEventsDataset(Dataset):
                 # do not increase the counter
                 item = self.dataset.__getitem__(j + k, seed)
                 item['events'].fill_(0.0)
-                if 'flow' in item:
-                    item['flow'].fill_(0.0)
                 sequence.append(item)
             else:
                 # normal case: append the next item to the list
@@ -156,21 +154,19 @@ class SynchronizedFramesEventsDataset(Dataset):
     This Dataset class iterates through all the event tensors and returns, for each tensor,
     a dictionary of the form:
 
-        {'depth': frame, 'events': events, 'flow': disp_01, 'semantic': semantic}
+        {'depth': frame, 'events': events}
 
     where:
 
     * depth is a H x W tensor containing the first frame whose timestamp >= event tensor
     * events is a C x H x W tensor containing the event data
-    * flow is a 2 x H x W tensor containing the flow (displacement) from the current frame to the last frame
-    * semantic is a 1 x H x W tensor containing the semantic labels 
 
     This loader assumes that each event tensor can be uniquely associated with a frame.
     For each event tensor with timestamp e_t, the corresponding frame is the first frame whose timestamp f_t >= e_t
 
     """
 
-    def __init__(self, base_folder, event_folder, depth_folder='depth/data/', frame_folder='rgb/data/', flow_folder='flow/data/', semantic_folder='semantic/data/',
+    def __init__(self, base_folder, event_folder, depth_folder='depth/data/', frame_folder='rgb/data/',
                  start_time=0.0, stop_time=0.0, clip_distance=1000.0, every_x_rgb_frame=1,
                  transform=None,
                  normalize=True,
@@ -180,15 +176,13 @@ class SynchronizedFramesEventsDataset(Dataset):
                  reg_factor=5.7,
                  recurrency=True):
 
-        '''print((base_folder, event_folder, depth_folder, frame_folder, flow_folder, semantic_folder, \
+        '''print((base_folder, event_folder, depth_folder, frame_folder, \
                  start_time, stop_time, clip_distance, every_x_rgb_frame, \
                  transform, normalize, use_phased_arch, baseline))'''
 
         self.base_folder = base_folder
         self.depth_folder = join(self.base_folder, depth_folder if depth_folder != None else 'depth/data/')
         self.frame_folder = join(self.base_folder, frame_folder if frame_folder != None else 'rgb/data/')
-        self.flow_folder = join(self.base_folder, flow_folder if flow_folder != None else 'flow/data/')
-        self.semantic_folder = join(self.base_folder, semantic_folder if semantic_folder != None else 'semantic/data/')
         self.transform = transform
         self.event_dataset = VoxelGridDataset(base_folder, event_folder,
                                                   start_time, stop_time,
@@ -324,16 +318,6 @@ class SynchronizedFramesEventsDataset(Dataset):
                 random.seed(seed)
                 frame = self.transform(frame)
 
-
-            # if test script is run, semantic segmentation is saved for later evaluation
-            if self.test:
-                segmask_path = glob.glob(self.semantic_folder + '/*_{:04d}_gt_labelIds.png'.format(frame_idx))
-                seg_mask = cv2.imread(segmask_path[0])[:, :, 0].astype(np.float32)
-                seg_mask = torch.tensor(seg_mask).unsqueeze(0)  # [1 x H x W]
-                if self.transform:
-                    random.seed(seed)
-                    seg_mask = self.transform(seg_mask)
-
             if self.use_phased_arch:
                 timestamp = torch.from_numpy(np.asarray([event_timestamp]).astype(np.float32))
                 # timestamp = torch.tensor([event_timestamp])
@@ -344,8 +328,6 @@ class SynchronizedFramesEventsDataset(Dataset):
                 # in the "image" entry.
                 item['events{}'.format(k)] = events['events']
                 item['depth_events{}'.format(k)] = frame
-                if self.test:
-                    item['semantic_seg_{}'.format(k)] = seg_mask
                 if self.use_phased_arch:
                     item['times_events{}'.format(k)] = timestamp
 
@@ -432,7 +414,7 @@ class TA_ECS(Dataset):
     Load sequences of time-synchronized {event tensors + depth} from a folder.
     """
 
-    def __init__(self, base_folder, event_folder, depth_folder='depth/data/', frame_folder='rgb/data/', flow_folder='flow/data/', semantic_folder='semantic/data/',
+    def __init__(self, base_folder, event_folder, depth_folder='depth/data/', frame_folder='rgb/data/',
                  start_time=0.0, stop_time=0.0,
                  sequence_length=2, transform=None,
                  proba_pause_when_running=0.0, proba_pause_when_paused=0.0,
@@ -455,13 +437,13 @@ class TA_ECS(Dataset):
         # Recurrency = Synchronized
         if not recurrency:
             self.dataset = SynchronizedFramesEventsRawDataset(base_folder, event_folder, depth_folder, frame_folder,
-                                                           flow_folder, semantic_folder, start_time, stop_time,
-                                                           clip_distance, every_x_rgb_frame, transform,
-                                                           normalize=normalize, use_phased_arch=use_phased_arch,
-                                                           baseline=baseline, loss_composition=loss_composition)
+                                                             start_time, stop_time,
+                                                             clip_distance, every_x_rgb_frame, transform,
+                                                             normalize=normalize, use_phased_arch=use_phased_arch,
+                                                             baseline=baseline, loss_composition=loss_composition)
         else:   # RAMNET Dataset
             self.dataset = SynchronizedFramesEventsDataset(base_folder, event_folder, depth_folder, frame_folder,
-                                                           flow_folder, semantic_folder, start_time, stop_time,
+                                                           start_time, stop_time,
                                                            clip_distance, every_x_rgb_frame, transform,
                                                            normalize=normalize, use_phased_arch=use_phased_arch,
                                                            baseline=baseline, loss_composition=loss_composition,
@@ -529,8 +511,6 @@ class TA_ECS(Dataset):
                 # do not increase the counter
                 item = self.dataset.__getitem__(j + k, seed)
                 item['events'].fill_(0.0)
-                if 'flow' in item:
-                    item['flow'].fill_(0.0)
                 sequence.append(item)
             else:
                 # normal case: append the next item to the list
@@ -544,11 +524,7 @@ class TA_ECS(Dataset):
                 for k, item in data_items.items():
                     if k != "times" and k != "batchlength_events":
                         item = item[None]
-                        if "semantic" in k:
-                            item = f.interpolate(item, scale_factor=self.scale_factor,
-                                                 recompute_scale_factor=False)
-                        else:
-                            item = f.interpolate(item, scale_factor=self.scale_factor, mode='bilinear',
+                        item = f.interpolate(item, scale_factor=self.scale_factor, mode='bilinear',
                                                  recompute_scale_factor=False, align_corners=False)
                         item = item[0]
                         data_items[k] = item
@@ -563,7 +539,6 @@ if __name__ == '__main__':
                  base_folder = "/home/work/main/jpark/Event_camera/data/Town05_sample/Town05_sequence_0",
                  event_folder = "events/voxels",
                  depth_folder='depth/data/', frame_folder='rgb/data/',
-                 flow_folder='flow/data/', semantic_folder='semantic/data/',
                  start_time=0.0, stop_time=0.0,
                  sequence_length=10, transform=None,
                  proba_pause_when_running=0.0, proba_pause_when_paused=0.0,

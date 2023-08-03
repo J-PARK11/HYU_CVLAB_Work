@@ -37,7 +37,6 @@ def init_exp_env():
 def interp_imgs(ppl, ori_img0, ori_img1, model_size):
     img0 = (torch.tensor(ori_img0.transpose(2, 0, 1)).to(DEVICE) / 255.).unsqueeze(0)
     img1 = (torch.tensor(ori_img1.transpose(2, 0, 1)).to(DEVICE) / 255.).unsqueeze(0)
-    
     # Only RAFT
     if model_size == 'raft':
         if (img0.shape[-1] % 8 != 0) or (img0.shape[-2] % 8 != 0):
@@ -93,6 +92,7 @@ def interp_imgs(ppl, ori_img0, ori_img1, model_size):
 
     flow01 = bi_flow[:, :, :2]
     flow10 = bi_flow[:, :, 2:]
+    
     flow01 = flow_viz.flow_to_image(flow01, convert_to_bgr=True)
     flow10 = flow_viz.flow_to_image(flow10, convert_to_bgr=True)
     bi_flow = np.concatenate([flow01, flow10], axis=1)
@@ -107,6 +107,14 @@ def interp_imgs(ppl, ori_img0, ori_img1, model_size):
     cv2.imwrite(os.path.join(SAVE_DIR, '7-refine_mask0.png'), refine_mask0)
     cv2.imwrite(os.path.join(SAVE_DIR, '8-refine_mask1.png'), refine_mask1)
     cv2.imwrite(os.path.join(SAVE_DIR, '9-refine_res.png'), refine_res)
+
+    # temp =================================== #
+    depth0 = extra_dict['depth0'][0].cpu().numpy().transpose(1,2,0)*255
+    depth1 = extra_dict['depth1'][0].cpu().numpy().transpose(1,2,0)*255
+    cv2.imwrite(os.path.join(SAVE_DIR, '10-depth0.png'), depth0)
+    cv2.imwrite(os.path.join(SAVE_DIR, '11-depth1.png'), depth1)
+    # ======================================== #
+
     print("Interpolation is completed! Results in %s" % (SAVE_DIR))
     print('\n>>>>>>>>>>>>>>>>>> Complete <<<<<<<<<<<<<<<<<<')
 
@@ -165,6 +173,10 @@ if __name__ == "__main__":
         model_file = "./checkpoints/upr-base.pkl"
     elif args.model_size == 'softmax':
         model_file = "./checkpoints/upr-softmax.pkl"        
+    elif args.model_size == 'total':
+        model_file = "./checkpoints/upr-total.pkl"        
+    elif args.model_size == 'total_depth':
+        model_file = "./checkpoints/upr-total-depth.pkl"        
     else:
         ValueError("No mactched Model Size!")
 

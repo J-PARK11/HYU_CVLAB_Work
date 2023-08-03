@@ -8,6 +8,10 @@ from ..utils import correlation
 from ..models.softsplat import softsplat
 from ..models.swin_transformer import swin_encoder
 
+"""
+UPR-Total: Skip + Softmax + Transformer
+"""
+
 #**************************************************************************************************#
 # => Motion Estimation
 #**************************************************************************************************#
@@ -38,7 +42,7 @@ class MotionEstimator(nn.Module):
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer3 = nn.Sequential(
-                nn.Conv2d(in_channels=128, out_channels=112,
+                nn.Conv2d(in_channels=(128+160), out_channels=112,
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer4 = nn.Sequential(
@@ -46,7 +50,7 @@ class MotionEstimator(nn.Module):
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer5 = nn.Sequential(
-                nn.Conv2d(in_channels=96, out_channels=64,
+                nn.Conv2d(in_channels=(96+112), out_channels=64,
                     kernel_size=3, stride=1, padding=1),
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
         self.conv_layer6 = nn.Sequential(
@@ -56,7 +60,7 @@ class MotionEstimator(nn.Module):
 
     def forward(self, feat0, feat1, last_feat, last_flow):
         corr_fn=correlation.FunctionCorrelation
-
+        
         # Softsplat Forward Warping
         feat0 = softsplat.FunctionSoftsplat(
                 tenInput=feat0, tenFlow=last_flow[:, :2]*0.25*0.5,
@@ -73,10 +77,14 @@ class MotionEstimator(nn.Module):
         # CNN Predictor (6-layer)
         input_feat = torch.cat([volume, feat0, feat1, last_feat, last_flow], 1)
         feat = self.conv_layer1(input_feat)
+        skip1 = feat
+
         feat = self.conv_layer2(feat)
-        feat = self.conv_layer3(feat)
+        feat = self.conv_layer3(torch.cat([feat, skip1], dim=1))
+        skip3 = feat
+        
         feat = self.conv_layer4(feat)
-        feat = self.conv_layer5(feat)
+        feat = self.conv_layer5(torch.cat([feat, skip3], dim=1))
         flow = self.conv_layer6(feat)
 
         return flow, feat
@@ -209,8 +217,9 @@ class SynthesisNetwork(nn.Module):
         # prediction
         refine = self.pred(x)
         refine_res = torch.sigmoid(refine[:, :3]) * 2 - 1
-        refine_mask0 = torch.sigmoid(refine[:, 3:4])
-        refine_mask1 = torch.sigmoid(refine[:, 4:5])    
+        softmax_mask = torch.softmax(refine[:,3:5], dim=1)
+        refine_mask0 = softmax_mask[:,:1]
+        refine_mask1 = softmax_mask[:,1:]   
 
         merged_img = (warped_img0 * refine_mask0 * (1 - time_period) + \
                 warped_img1 * refine_mask1 * time_period)
@@ -232,6 +241,8 @@ class SynthesisNetwork(nn.Module):
         extra_dict["refine_res"] = refine_res
 
         return interp_img, extra_dict
+
+
 
 #**************************************************************************************************#
 # => Unified model
@@ -279,7 +290,7 @@ class Model(nn.Module):
                     mode="bilinear", align_corners=False) * 0.5
             bi_flow_pyr.append(tmp_flow)
 
-        ## merge warped frames as initial in85terpolation for frame synthesis
+        ## merge warped frames as initial interpolation for frame synthesis
         if last_interp is None:
             flow_0t = ori_resolution_flow[:, :2] * time_period
             flow_1t = ori_resolution_flow[:, 2:4] * (1 - time_period)

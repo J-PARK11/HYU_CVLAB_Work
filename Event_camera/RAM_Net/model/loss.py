@@ -3,6 +3,7 @@ import torch
 from kornia.filters.sobel import spatial_gradient, sobel
 
 
+# L(k,si) = L_si
 def scale_invariant_loss(y_input, y_target, weight = 1.0, n_lambda = 1.0):
     log_diff = y_input - y_target
     is_nan = torch.isnan(log_diff)
@@ -18,7 +19,7 @@ def scale_invariant_log_loss(y_input, y_target, n_lambda = 1.0):
 def mse_loss(y_input, y_target):
     return F.mse_loss(y_input[~torch.isnan(y_target)], y_target[~torch.isnan(y_target)])
 
-
+# L(k,grad) = L_grad
 class MultiScaleGradient(torch.nn.Module):
     def __init__(self, start_scale = 1, num_scales = 4):
         super(MultiScaleGradient,self).__init__()

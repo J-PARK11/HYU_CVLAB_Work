@@ -110,8 +110,6 @@ class ERGB2Depth(BaseERGB2Depth):
 
         return predictions_dict, {'image': None}, prev_states_lstm
 
-
-
 # ========= RAMNET ========= #
 class ERGB2DepthRecurrent(BaseERGB2Depth):
     """

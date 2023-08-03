@@ -147,3 +147,5 @@ if __name__ == "__main__":
 
     print("benchmarking on 4K1000FPS...")
     evaluate(ppl, args.test_data_path, args.batch_size, args.nr_data_worker)
+elif args.model_size == 'total':
+        model_file = "./checkpoints/upr-total.pkl" 

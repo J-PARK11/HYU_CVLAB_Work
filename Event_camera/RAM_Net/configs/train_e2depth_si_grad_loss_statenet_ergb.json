@@ -5,10 +5,9 @@
     "data_loader": {
         "train": {
             "type": "SequenceSynchronizedFramesEventsDataset",
-            "base_folder": "/home/work/main/jpark/Event_camera/data/Town_train",
+            "base_folder": "/home/work/main/jpark/Event_camera/data/Town01",
             "depth_folder": "depth/data",
             "frame_folder": "rgb/data",
-            "flow_folder": "",
             "event_folder": "events/voxels",
             "proba_pause_when_running": 0.0,
             "proba_pause_when_paused": 0.0,
@@ -21,10 +20,9 @@
         },
         "validation": {
             "type": "SequenceSynchronizedFramesEventsDataset",
-            "base_folder": "/home/work/main/jpark/Event_camera/data/Town05_val",
+            "base_folder": "/home/work/main/jpark/Event_camera/data/Town05_sample",
             "frame_folder": "rgb/data",
             "depth_folder": "depth/data",
-            "flow_folder": "",
             "event_folder": "events/voxels",
             "proba_pause_when_running": 0.0,
             "proba_pause_when_paused": 0.0,
@@ -35,9 +33,9 @@
             "reg_factor": 5.70378,
             "baseline": false
         },
-        "batch_size": 6,
-        "num_workers": 0,
-        "pin_memory": false,
+        "batch_size": 4,
+        "num_workers": 4,
+        "pin_memory": true,
         "normalize": true,
         "shuffle": true
     },
@@ -65,7 +63,7 @@
         "median_error"
     ],
     "trainer": {
-        "epochs": 15,
+        "epochs": 10,
         "sequence_length": 10,
         "save_dir": "checkpoint",
         "save_freq": 2,
@@ -83,7 +81,7 @@
     "use_phased_arch": false,
     "model": {
         "num_bins_rgb": 1,
-        "num_bins_events": 7,
+        "num_bins_events": 2,
         "skip_type": "sum",
         "recurrent_block_type": "conv",
         "state_combination": "convgru",

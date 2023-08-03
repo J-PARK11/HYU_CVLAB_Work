@@ -11,6 +11,36 @@ from torch.utils.data import DataLoader, Dataset
 
 cv2.setNumThreads(0)
 
+class rendering_dataset(Dataset):
+    def __init__(self, data_root):
+        self.data_root = data_root
+        self.load_data()
+
+    def __len__(self):
+        return len(self.meta_data)
+
+    def load_data(self):
+        data_path = sorted(glob(os.path.join(self.data_root, "*")))
+        
+        self.meta_data=[]
+        for i in range(len(data_path)-1):
+            self.meta_data.append([data_path[i],data_path[i+1]])
+
+    def getimg(self, index):
+        # Load images
+        imgpath = self.meta_data[index]
+        img0 = cv2.imread(imgpath[0])
+        img1 = cv2.imread(imgpath[1])
+        return img0, img1
+
+    def __getitem__(self, index):
+        img0, img1 = self.getimg(index)        
+        crop_size = (320, 640)
+        crop_size = img0.shape[:2]
+        img0 = torch.from_numpy(img0).permute(2, 0, 1)
+        img1 = torch.from_numpy(img1).permute(2, 0, 1)
+        return img0, img1
+
 class SnuFilm(Dataset):
     def __init__(self, data_root, data_type="extreme"):
         self.data_root = data_root

@@ -19,6 +19,7 @@ class FeatPyramid(nn.Module):
     ### Channel Tracking ###
     3 -> 16 -> 32 -> 64 ->
     """
+    
     def __init__(self):
         super(FeatPyramid, self).__init__()
         self.conv_stage0 = nn.Sequential(
@@ -62,9 +63,15 @@ class FeatPyramid(nn.Module):
                 nn.LeakyReLU(inplace=False, negative_slope=0.1))
 
     def forward(self, img):
+        """
+        torch.Size([32, 16, 64, 112])
+        torch.Size([32, 32, 32, 56])
+        torch.Size([32, 64, 16, 28])
+        """
         C0 = self.conv_stage0(img)
         C1 = self.conv_stage1(C0)
         C2 = self.conv_stage2(C1)
+
         return [C0, C1, C2]
 
 
@@ -445,7 +452,6 @@ class Model(nn.Module):
 
         return interp_img, bi_flow, extra_dict['warped_img0'], extra_dict['warped_img1'], \
                 {"interp_imgs": interp_imgs, "bi_flows": bi_flows, "refine_mask0": extra_dict['refine_mask0'], "refine_mask1": extra_dict['refine_mask1'], "refine_res": extra_dict['refine_res']}
-
 
 if __name__ == "__main__":
     pass
