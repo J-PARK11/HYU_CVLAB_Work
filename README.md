@@ -1,4 +1,4 @@
-# personal_junhyeokpark
+# Work on Master1 Period
 Project: Video Frame Interpolation, Semantic Segmentation
 
 ## 📑 Index
